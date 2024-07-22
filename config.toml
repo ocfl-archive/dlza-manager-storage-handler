@@ -1,0 +1,10 @@
+
+[Handler]
+Host="localhost"
+Port=9082
+
+[Storage-handler]
+Host="localhost"
+Port=9083
+
+#modify if needed the hosts/ports

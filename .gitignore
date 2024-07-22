@@ -1,0 +1,6 @@
+coverage.out
+data/certs
+.idea/
+uploads/
+go.work
+

@@ -1,0 +1,21 @@
+handler:
+  host : localhost
+  port : 12345
+storage-handler:
+  host : localhost
+  port : 123456
+clerk: 
+  host : localhost
+  port : 1234567
+s3-temp-storage:
+  type: s3
+  name: name
+  key: your_key
+  bucket: your_bucket
+  api-url-value: https://your-api-url-value.ch
+  url: your-api-url-value.ch
+  upload-folder: vfs:/your_upload_folder
+  capem: "ignore"
+  debug: false
+
+#modify if needed the hosts/ports
