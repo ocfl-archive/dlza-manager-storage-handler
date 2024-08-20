@@ -149,7 +149,8 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 					d.Logger.Errorf("Could not create objectInstance for object with ID: %v", objectPb.Id)
 					return &pb.NoParam{}, errors.Wrapf(err, "Could not create objectInstance for object with ID: %v", objectPb.Id)
 				}
-
+				//ToDo Decide what to do with deletion
+				storageLocationsToDeleteFrom.StorageLocations = nil
 				// Delete redundant objectInstances and objects from storageLocations
 				if len(storageLocationsToDeleteFrom.StorageLocations) != 0 {
 					for _, storageLocationToDeleteFrom := range storageLocationsToDeleteFrom.StorageLocations {
