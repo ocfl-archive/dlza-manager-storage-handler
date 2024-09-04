@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/ocfl-archive/dlza-manager-storage-handler/models"
 	"log"
 	"os"
 
@@ -19,11 +20,12 @@ type Logging struct {
 }
 
 type Config struct {
-	Handler        Service       `yaml:"handler" toml:"Handler"`
-	StorageHandler Service       `yaml:"storage-handler" toml:"StorageHandler"`
-	Clerk          Service       `yaml:"clerk" toml:"Clerk"`
-	S3TempStorage  S3TempStorage `yaml:"s3-temp-storage" toml:"S3TempStorage"`
-	Logging        Logging       `yaml:"logging" toml:"Logging"`
+	ServerConfig   models.ServerConfig `yaml:"server-config" toml:"ServerConfig"`
+	Handler        Service             `yaml:"handler" toml:"Handler"`
+	StorageHandler Service             `yaml:"storage-handler" toml:"StorageHandler"`
+	Clerk          Service             `yaml:"clerk" toml:"Clerk"`
+	S3TempStorage  S3TempStorage       `yaml:"s3-temp-storage" toml:"S3TempStorage"`
+	Logging        Logging             `yaml:"logging" toml:"Logging"`
 }
 
 type S3TempStorage struct {
