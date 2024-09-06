@@ -14,8 +14,6 @@ import (
 	handlerPb "github.com/ocfl-archive/dlza-manager-handler/handlerproto"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/config"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
-	"github.com/ocfl-archive/dlza-manager/mapper"
-	"github.com/ocfl-archive/dlza-manager/models"
 	"github.com/ocfl-archive/gocfl/v2/gocfl/cmd"
 	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
 	"time"
@@ -70,18 +68,17 @@ func (u *UploaderService) CopyFiles(order *pb.IncomingOrder) error {
 }
 
 func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson string, collectionAlias string, confObj configuration.Config) (*pb.ObjectAndFiles, error) {
-	object := models.Object{}
-	err := json.Unmarshal([]byte(objectJson), &object)
+	objectPb := pb.Object{}
+	err := json.Unmarshal([]byte(objectJson), &objectPb)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot unmarshal object: %v", objectJson)
 	}
-	objectPb := mapper.ConvertToObjectPb(object)
 
 	fileObjects, err := extractMetadata(tusePath, confObj, *u.Logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot ExtractMetadata for: %v", tusePath)
 	}
-	objectAndFiles := &pb.ObjectAndFiles{CollectionAlias: collectionAlias, Object: objectPb, Files: fileObjects}
+	objectAndFiles := &pb.ObjectAndFiles{CollectionAlias: collectionAlias, Object: &objectPb, Files: fileObjects}
 	return objectAndFiles, nil
 }
 
