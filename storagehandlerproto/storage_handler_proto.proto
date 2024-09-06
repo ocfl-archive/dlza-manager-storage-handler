@@ -13,10 +13,6 @@ package storagehandlerproto;
 
 import "dlza_proto.proto";
 
-service UploaderStorageHandlerService {
-  rpc CopyFile(dlzamanagerproto.IncomingOrder) returns (dlzamanagerproto.Status) {};
-}
-
 service UploaderHandlerService {
   rpc TenantHasAccess(dlzamanagerproto.UploaderAccessObject) returns (dlzamanagerproto.Status) {};
   rpc SaveObjectAndFiles(dlzamanagerproto.ObjectAndFiles) returns (dlzamanagerproto.Id);

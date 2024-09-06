@@ -22,6 +22,7 @@ import (
 	"github.com/ocfl-archive/dlza-manager-storage-handler/service"
 	service2 "github.com/ocfl-archive/dlza-manager-storage-handler/service"
 	storageHandlerPb "github.com/ocfl-archive/dlza-manager-storage-handler/storagehandlerproto"
+	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	"github.com/patrickmn/go-cache"
 	"github.com/rs/zerolog"
 	tusd "github.com/tus/tusd/v2/pkg/handler"
@@ -36,6 +37,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -87,14 +89,13 @@ func main() {
 	grpcServerStorageHandler := grpc.NewServer()
 	storageHandlerPb.RegisterDispatcherStorageHandlerServiceServer(grpcServerStorageHandler, &server.DispatcherStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: daLogger})
 	storageHandlerPb.RegisterClerkStorageHandlerServiceServer(grpcServerStorageHandler, &server.ClerkStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler})
-	storageHandlerPb.RegisterUploaderStorageHandlerServiceServer(grpcServerStorageHandler, &server.UploaderStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, ConfigObj: cfg, Logger: daLogger})
 	log.Printf("server started at %v", lisDispatcher.Addr())
 	go func() {
 		if err := grpcServerStorageHandler.Serve(lisDispatcher); err != nil {
 			panic(errors.Wrapf(err, "Failed to serve gRPC server on port: %v", cfg.StorageHandler.Port))
 		}
 	}()
-	uploaderService := service2.UploaderService{StorageHandlerHandlerServiceClient: clientStorageHandlerHandler, Logger: &logger}
+	uploaderService := service2.UploaderService{StorageHandlerHandlerServiceClient: clientStorageHandlerHandler, Logger: &logger, ConfigObj: cfg}
 	ctx := context.Background()
 	cs := cache.New(60*time.Minute, 60*time.Minute)
 	credentialsS3 := credentials.NewStaticCredentialsProvider("AKIAFEDBDB2704C24D21", "0jmsjtQd0ka66thzFDJn6ESUeiLii4dIHHHgTPU6", "")
@@ -132,6 +133,43 @@ func main() {
 	// Start another goroutine for receiving events from the handler whenever
 	// an upload is completed. The event will contain details about the upload
 	// itself and the relevant HTTP request.
+
+	go func() {
+		for {
+			select {
+			case event := <-handler.CompleteUploads:
+				fmt.Printf("Upload %s finished\n", event.Upload.ID)
+
+				basePathString := "vfs:/temp_switch_ch" + "/" + "ubbasel-test" + "/"
+				uploadId := strings.Split(event.Upload.ID, separator)[0]
+				filename := event.HTTPRequest.Header.Get("FileName")
+				objectJson := event.HTTPRequest.Header.Get("ObjectJson")
+				collection := event.HTTPRequest.Header.Get("Collection")
+				statusId := event.HTTPRequest.Header.Get("StatusId")
+				_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "copied to temp storage"})
+				if err != nil {
+					log.Printf("could not AlterStatus with status id %s:  to copied to temp storage", statusId)
+				}
+				objectAndFiles, err := uploaderService.CreateObjectAndFiles(uploadId, objectJson, collection, cfg)
+				if err != nil {
+					log.Printf("could not CreateObjectAndFiles for upload id %s: %v", event.Upload.ID, err)
+				} else {
+					order := &pb.IncomingOrder{CollectionAlias: collection, StatusId: statusId,
+						FilePath: basePathString + uploadId, ObjectAndFiles: objectAndFiles, FileName: filename}
+					err = uploaderService.CopyFiles(order)
+					if err != nil {
+						log.Printf("could not copy file with upload id %s:", event.Upload.ID)
+					}
+				}
+			case event := <-handler.CreatedUploads:
+				fmt.Printf("Upload %s created\n", event.Upload.ID)
+			case event := <-handler.TerminatedUploads:
+				fmt.Printf("Upload %s terminated\n", event.Upload.ID)
+			case event := <-handler.UploadProgress:
+				fmt.Printf("Upload %s progress: %v\n", event.Upload.ID, event.Upload.Offset*100/event.Upload.Size)
+			}
+		}
+	}()
 
 	var cert tls.Certificate
 	if cfg.ServerConfig.TLSCert == "" {

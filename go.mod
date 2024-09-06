@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.27.26
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.31
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.58.2
+	github.com/je4/indexer/v2 v2.0.11
 	github.com/aws/smithy-go v1.20.4
 	github.com/gin-contrib/cors v1.7.2
 	github.com/je4/filesystem/v2 v2.0.15
@@ -18,7 +19,7 @@ require (
 	github.com/ocfl-archive/dlza-manager-handler v0.0.7
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/rs/cors v1.8.3
+	github.com/ocfl-archive/gocfl/v2 v2.0.4-beta13
 	github.com/rs/zerolog v1.33.0
 	github.com/tus/tusd/v2 v2.4.0
 	golang.org/x/net v0.28.0
