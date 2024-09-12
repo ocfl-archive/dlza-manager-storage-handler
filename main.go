@@ -7,11 +7,12 @@ import (
 	"emperror.dev/errors"
 	"flag"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	configuration "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	smithyendpoints "github.com/aws/smithy-go/endpoints"
+	"github.com/aws/smithy-go/middleware"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/je4/utils/v2/pkg/zLogger"
@@ -35,6 +36,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -45,12 +47,37 @@ var configParam = flag.String("config", "", "config file in toml format, no need
 
 const separator = "+"
 
-type resolverV2 struct{}
+// disableEndpointPrefix applies the flag that will prevent any
+// operation-specific host prefix from being applied
+type disableEndpointPrefix struct{}
 
-func (*resolverV2) ResolveEndpoint(ctx context.Context, params s3.EndpointParameters) (
+func (disableEndpointPrefix) ID() string { return "disableEndpointPrefix" }
+
+func (disableEndpointPrefix) HandleInitialize(
+	ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler,
+) (middleware.InitializeOutput, middleware.Metadata, error) {
+	ctx = smithyhttp.SetHostnameImmutable(ctx, true)
+	return next.HandleInitialize(ctx, in)
+}
+
+func addDisableEndpointPrefix(o *s3.Options) {
+	o.APIOptions = append(o.APIOptions, func(stack *middleware.Stack) error {
+		return stack.Initialize.Add(disableEndpointPrefix{}, middleware.After)
+	})
+}
+
+type staticResolver struct {
+	url string
+}
+
+func (s staticResolver) ResolveEndpoint(ctx context.Context, params s3.EndpointParameters) (
 	smithyendpoints.Endpoint, error,
 ) {
-	return s3.NewDefaultEndpointResolverV2().ResolveEndpoint(ctx, params)
+	u, err := url.Parse(s.url)
+	if err != nil {
+		return smithyendpoints.Endpoint{}, err
+	}
+	return smithyendpoints.Endpoint{URI: *u}, nil
 }
 
 func main() {
@@ -110,15 +137,14 @@ func main() {
 		panic(err.Error())
 	}
 	// Create a new S3 SDK client instance.
-	s3Client := s3.NewFromConfig(cnf, func(o *s3.Options) {
-		o.BaseEndpoint = aws.String("https://vip-ecs-ub.storage.p.unibas.ch")
-		o.EndpointResolverV2 = &resolverV2{}
+	svc := s3.NewFromConfig(cnf, func(o *s3.Options) {
+		o.EndpointResolverV2 = staticResolver{url: "https://vip-ecs-ub.storage.p.unibas.ch/"}
 	})
 
 	// Create a new S3 SDK client instance.
 	composer := tusd.NewStoreComposer()
 
-	s3Store := s3store.New("ubbasel-test", &service.S3Service{Client: s3Client})
+	s3Store := s3store.New("ubbasel-test", &service.S3Service{Client: svc, AddDisableEndpointPrefix: addDisableEndpointPrefix})
 
 	s3Store.UseIn(composer)
 	handler, err := tusd.NewHandler(tusd.Config{

@@ -19,7 +19,7 @@ require (
 	github.com/ocfl-archive/dlza-manager-handler v0.0.7
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/ocfl-archive/gocfl/v2 v2.0.4-beta13
+	github.com/ocfl-archive/gocfl/v2 v2.0.4-beta14
 	github.com/rs/zerolog v1.33.0
 	github.com/tus/tusd/v2 v2.4.0
 	golang.org/x/net v0.28.0
