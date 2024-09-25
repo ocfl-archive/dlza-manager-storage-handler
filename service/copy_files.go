@@ -40,7 +40,12 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot create vfs: %v", err)
 	}
 
-	storageLocation := storageLocations.StorageLocations[0] // ToDo Choose the location instead just taking first
+	var storageLocation *pb.StorageLocation
+	for _, storageLocationItem := range storageLocations.StorageLocations {
+		if storageLocationItem.FillFirst {
+			storageLocation = storageLocationItem
+		}
+	}
 
 	storagePartition, err := clientStorageHandlerHandler.GetStoragePartitionForLocation(ctx, &pb.SizeAndId{Size: objectWithCollectionAliasAndPath.ObjectAndFiles.Object.Size, Id: storageLocation.Id})
 	if err != nil {
