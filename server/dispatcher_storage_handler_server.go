@@ -133,7 +133,7 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 				}()
 				if err != nil {
 					d.Logger.Errorf("cannot close copy file writer: %s", pathToCopyFrom)
-					continue
+					break
 				}
 
 				storagePartition.CurrentSize += int64(objectPb.Size)
