@@ -133,7 +133,7 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 				}()
 				if err != nil {
 					d.Logger.Errorf("cannot copy object from: %s", pathToCopyFrom)
-					return &pb.NoParam{}, errors.Wrapf(err, "cannot copy object from: %v", pathToCopyFrom)
+					continue
 				}
 
 				storagePartition.CurrentSize += int64(objectPb.Size)
