@@ -40,7 +40,12 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot create vfs: %v", err)
 	}
 
-	storageLocation := storageLocations.StorageLocations[0] // ToDo Choose the location instead just taking first
+	var storageLocation *pb.StorageLocation
+	for _, storageLocationItem := range storageLocations.StorageLocations {
+		if storageLocationItem.FillFirst {
+			storageLocation = storageLocationItem
+		}
+	}
 
 	storagePartition, err := clientStorageHandlerHandler.GetStoragePartitionForLocation(ctx, &pb.SizeAndId{Size: objectWithCollectionAliasAndPath.ObjectAndFiles.Object.Size, Id: storageLocation.Id})
 	if err != nil {
@@ -54,6 +59,15 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 	}
 
 	path := connection.Folder + storagePartition.Alias + "/" + objectWithCollectionAliasAndPath.FileName
+
+	objectInstance := &pb.ObjectInstance{Path: path, Status: "new", StoragePartitionId: storagePartition.Id, Size: objectWithCollectionAliasAndPath.ObjectAndFiles.Object.Size}
+	storagePartition.CurrentSize += objectWithCollectionAliasAndPath.ObjectAndFiles.Object.Size
+	storagePartition.CurrentObjects++
+
+	_, err = clientStorageHandlerHandler.SaveAllTableObjectsAfterCopying(ctx, &pb.InstanceWithPartitionAndObjectWithFiles{StoragePartition: storagePartition, ObjectInstance: objectInstance, ObjectAndFiles: objectWithCollectionAliasAndPath.ObjectAndFiles})
+	if err != nil {
+		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot SaveAllTableObjectsAfterCopying for collection with alias: %v and path: %v", objectWithCollectionAliasAndPath.CollectionAlias, path)
+	}
 
 	err = func() error {
 
@@ -123,15 +137,6 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 	_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: objectWithCollectionAliasAndPath.StatusId, Status: "zip was copied"})
 	if err != nil {
 		daLogger.Warningf("could not AlterStatus with status id %s:  to zip was copied", objectWithCollectionAliasAndPath.StatusId)
-	}
-
-	objectInstance := &pb.ObjectInstance{Path: path, Status: "new", StoragePartitionId: storagePartition.Id, Size: objectWithCollectionAliasAndPath.ObjectAndFiles.Object.Size}
-	storagePartition.CurrentSize += objectWithCollectionAliasAndPath.ObjectAndFiles.Object.Size
-	storagePartition.CurrentObjects++
-
-	_, err = clientStorageHandlerHandler.SaveAllTableObjectsAfterCopying(ctx, &pb.InstanceWithPartitionAndObjectWithFiles{StoragePartition: storagePartition, ObjectInstance: objectInstance, ObjectAndFiles: objectWithCollectionAliasAndPath.ObjectAndFiles})
-	if err != nil {
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot SaveAllTableObjectsAfterCopying for collection with alias: %v and path: %v", objectWithCollectionAliasAndPath.CollectionAlias, path)
 	}
 
 	return &pb.Status{Ok: true}, nil

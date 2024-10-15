@@ -86,6 +86,20 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 				}
 
 				path := connection.Folder + storagePartition.Alias + "/" + filepath.Base(pathToCopyFrom)
+
+				storagePartition.CurrentSize += int64(objectPb.Size)
+				storagePartition.CurrentObjects++
+				objectInstance := &pb.ObjectInstance{Path: path, Status: "new", ObjectId: objectPb.Id, StoragePartitionId: storagePartition.Id, Size: objectPb.Size}
+				_, err = d.ClientStorageHandlerHandler.CreateObjectInstance(ctx, objectInstance)
+				if err != nil {
+					d.Logger.Errorf("Could not create objectInstance for object with ID: %v", objectPb.Id)
+					return &pb.NoParam{}, errors.Wrapf(err, "Could not create objectInstance for object with ID: %v", objectPb.Id)
+				}
+				_, err = d.ClientStorageHandlerHandler.UpdateStoragePartition(ctx, storagePartition)
+				if err != nil {
+					d.Logger.Errorf("Could not update storage partition with ID: %v", storagePartition.Id)
+					return &pb.NoParam{}, errors.Wrapf(err, "Could not update storage partition with ID: %v", storagePartition.Id)
+				}
 				err = func() error {
 					sourceFP, err := vfs.Open(pathToCopyFrom)
 					if err != nil {
@@ -132,23 +146,10 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 					return nil
 				}()
 				if err != nil {
-					d.Logger.Errorf("cannot close copy file writer: %s", pathToCopyFrom)
+					d.Logger.Errorf("cannot copy object from: %s", pathToCopyFrom)
 					continue
 				}
 
-				storagePartition.CurrentSize += int64(objectPb.Size)
-				storagePartition.CurrentObjects++
-				_, err = d.ClientStorageHandlerHandler.UpdateStoragePartition(ctx, storagePartition)
-				if err != nil {
-					d.Logger.Errorf("Could not update storage partition with ID: %v", storagePartition.Id)
-					return &pb.NoParam{}, errors.Wrapf(err, "Could not update storage partition with ID: %v", storagePartition.Id)
-				}
-				objectInstance := &pb.ObjectInstance{Path: path, Status: "new", ObjectId: objectPb.Id, StoragePartitionId: storagePartition.Id, Size: objectPb.Size}
-				_, err = d.ClientStorageHandlerHandler.CreateObjectInstance(ctx, objectInstance)
-				if err != nil {
-					d.Logger.Errorf("Could not create objectInstance for object with ID: %v", objectPb.Id)
-					return &pb.NoParam{}, errors.Wrapf(err, "Could not create objectInstance for object with ID: %v", objectPb.Id)
-				}
 				//ToDo Decide what to do with deletion
 				storageLocationsToDeleteFrom.StorageLocations = nil
 				// Delete redundant objectInstances and objects from storageLocations
