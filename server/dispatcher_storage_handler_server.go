@@ -181,6 +181,7 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 					}
 				} else {
 					d.Logger.Errorf("cannot open file '%s': %v", pathToCopyFrom, err)
+					vfs.Close()
 					return &pb.NoParam{}, errors.Wrapf(err, "cannot open file '%s': %v", pathToCopyFrom, err)
 				}
 			}
