@@ -94,12 +94,12 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 					_, err = d.ClientStorageHandlerHandler.CreateObjectInstance(ctx, objectInstance)
 					if err != nil {
 						d.Logger.Errorf("Could not create objectInstance for object with ID: %v", objectPb.Id)
-						return &pb.NoParam{}, errors.Wrapf(err, "Could not create objectInstance for object with ID: %v", objectPb.Id)
+						continue
 					}
 					_, err = d.ClientStorageHandlerHandler.UpdateStoragePartition(ctx, storagePartition)
 					if err != nil {
 						d.Logger.Errorf("Could not update storage partition with ID: %v", storagePartition.Id)
-						return &pb.NoParam{}, errors.Wrapf(err, "Could not update storage partition with ID: %v", storagePartition.Id)
+						continue
 					}
 					err = func() error {
 
@@ -182,7 +182,7 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 				} else {
 					d.Logger.Errorf("cannot open file '%s': %v", pathToCopyFrom, err)
 					vfs.Close()
-					return &pb.NoParam{}, errors.Wrapf(err, "cannot open file '%s': %v", pathToCopyFrom, err)
+					continue
 				}
 			}
 			vfs.Close()
