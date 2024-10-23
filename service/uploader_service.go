@@ -5,11 +5,10 @@ import (
 	"emperror.dev/errors"
 	"encoding/json"
 	"fmt"
-	configuration "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/je4/filesystem/v2/pkg/s3fsrw"
 	"github.com/je4/filesystem/v2/pkg/writefs"
 	"github.com/je4/filesystem/v2/pkg/zipfs"
-	ironmaiden "github.com/je4/indexer/v2/pkg/indexer"
+	ironmaiden "github.com/je4/indexer/v3/pkg/indexer"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	handlerPb "github.com/ocfl-archive/dlza-manager-handler/handlerproto"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/config"
@@ -69,7 +68,7 @@ func (u *UploaderService) CopyFiles(order *pb.IncomingOrder) error {
 	return nil
 }
 
-func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson string, collectionAlias string, confObj configuration.Config) (*pb.ObjectAndFiles, error) {
+func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson string, collectionAlias string, confObj config.Config) (*pb.ObjectAndFiles, error) {
 	object := models.Object{}
 	err := json.Unmarshal([]byte(objectJson), &object)
 	if err != nil {
@@ -84,7 +83,7 @@ func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson strin
 	return objectAndFiles, nil
 }
 
-func extractMetadata(tusFileName string, confObj configuration.Config, logger zLogger.ZLogger) ([]*pb.File, error) {
+func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLogger) ([]*pb.File, error) {
 	daLogger := zLogger.NewZWrapper(logger)
 	fsFactory, err := writefs.NewFactory()
 	if err != nil {
@@ -93,9 +92,9 @@ func extractMetadata(tusFileName string, confObj configuration.Config, logger zL
 	// arn:cache:s3:zurich:trallala
 	if err := fsFactory.Register(s3fsrw.NewCreateFSFunc(map[string]*s3fsrw.S3Access{
 		"cache": &s3fsrw.S3Access{
-			AccessKey: "AKIAFEDBDB2704C24D21",
-			SecretKey: "0jmsjtQd0ka66thzFDJn6ESUeiLii4dIHHHgTPU6",
-			URL:       "vip-ecs-ub.storage.p.unibas.ch",
+			AccessKey: conf.S3TempStorage.Key,
+			SecretKey: conf.S3TempStorage.Secret,
+			URL:       conf.S3TempStorage.Url,
 			UseSSL:    true,
 		},
 	}, s3fsrw.ARNRegexStr, false, nil, daLogger), "^arn:", writefs.LowFS); err != nil {

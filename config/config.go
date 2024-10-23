@@ -1,58 +1,63 @@
 package config
 
 import (
-	"github.com/ocfl-archive/dlza-manager-storage-handler/models"
-	"log"
+	"emperror.dev/errors"
+	"github.com/BurntSushi/toml"
+	"github.com/je4/utils/v2/pkg/config"
+	"github.com/je4/utils/v2/pkg/stashconfig"
+	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
+	"io/fs"
 	"os"
-
-	"github.com/jinzhu/configor"
 )
 
-type Service struct {
-	ServiceName string `yaml:"service_name" toml:"ServiceName"`
-	Host        string `yaml:"host" toml:"Host"`
-	Port        int    `yaml:"port" toml:"Port"`
-}
-
-type Logging struct {
-	LogLevel string
-	LogFile  string
-}
-
 type Config struct {
-	ServerConfig   models.ServerConfig `yaml:"server-config" toml:"ServerConfig"`
-	Handler        Service             `yaml:"handler" toml:"Handler"`
-	StorageHandler Service             `yaml:"storage-handler" toml:"StorageHandler"`
-	Clerk          Service             `yaml:"clerk" toml:"Clerk"`
-	S3TempStorage  S3TempStorage       `yaml:"s3-temp-storage" toml:"S3TempStorage"`
-	Logging        Logging             `yaml:"logging" toml:"Logging"`
+	LocalAddr               string             `toml:"localaddr"`
+	Domains                 []string           `toml:"domains"`
+	ExternalAddr            string             `toml:"externaladdr"`
+	Bearer                  string             `toml:"bearer"`
+	ResolverAddr            string             `toml:"resolveraddr"`
+	ResolverTimeout         config.Duration    `toml:"resolvertimeout"`
+	ResolverNotFoundTimeout config.Duration    `toml:"resolvernotfoundtimeout"`
+	ActionTimeout           config.Duration    `toml:"actiontimeout"`
+	ServerTLS               *loader.Config     `toml:"server"`
+	ClientTLS               *loader.Config     `toml:"client"`
+	GRPCClient              map[string]string  `toml:"grpcclient"`
+	Log                     stashconfig.Config `toml:"log"`
+	S3TempStorage           S3TempStorage      `toml:"s3tempstorage"`
 }
 
 type S3TempStorage struct {
-	Type         string `yaml:"type" toml:"Type"`
-	Name         string `yaml:"name" toml:"Name"`
-	Key          string `yaml:"key" toml:"Key"`
-	Secret       string `yaml:"secret" toml:"Secret"`
-	Bucket       string `yaml:"bucket" toml:"Bucket"`
-	ApiUrlValue  string `yaml:"api-url-value" toml:"ApiUrlValue"`
-	UploadFolder string `yaml:"upload-folder" toml:"UploadFolder"`
-	Url          string `yaml:"url" toml:"Url"`
-	CAPEM        string `yaml:"capem" toml:"CAPEM"`
-	Debug        bool   `yaml:"debug" toml:"Debug"`
+	Type         string `yaml:"type" toml:"type"`
+	Name         string `yaml:"name" toml:"name"`
+	Key          string `yaml:"key" toml:"key"`
+	Secret       string `yaml:"secret" toml:"secret"`
+	Bucket       string `yaml:"bucket" toml:"bucket"`
+	ApiUrlValue  string `yaml:"api-url-value" toml:"apiurlvalue"`
+	UploadFolder string `yaml:"upload-folder" toml:"uploadfolder"`
+	Url          string `yaml:"url" toml:"url"`
+	CAPEM        string `yaml:"capem" toml:"capem"`
+	Debug        bool   `yaml:"debug" toml:"debug"`
 }
 
-// GetConfig creates a new config from a given environment
-func GetConfig(configFile string) Config {
-	conf := Config{}
-	if configFile == "" {
-		configFile = "config.yml"
+func LoadConfig(fSys fs.FS, fp string, conf *Config) error {
+	if _, err := fs.Stat(fSys, fp); err != nil {
+		path, err := os.Getwd()
+		if err != nil {
+			return errors.Wrap(err, "cannot get current working directory")
+		}
+		fSys = os.DirFS(path)
+		fp = "mediaserveraction.toml"
 	}
-	err := configor.Load(&conf, configFile)
+	data, err := fs.ReadFile(fSys, fp)
 	if err != nil {
-		log.Fatal(err)
+		return errors.Wrapf(err, "cannot read file [%v] %s", fSys, fp)
+	}
+	_, err = toml.Decode(string(data), conf)
+	if err != nil {
+		return errors.Wrapf(err, "error loading config file %v", fp)
 	}
 	if conf.S3TempStorage.Secret == "" {
 		conf.S3TempStorage.Secret = os.Getenv("S3_SECRET")
 	}
-	return conf
+	return nil
 }

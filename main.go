@@ -15,19 +15,18 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	configutil "github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	handlerClient "github.com/ocfl-archive/dlza-manager-handler/client"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/config"
-	"github.com/ocfl-archive/dlza-manager-storage-handler/data/certs"
-	"github.com/ocfl-archive/dlza-manager-storage-handler/server"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/service"
 	service2 "github.com/ocfl-archive/dlza-manager-storage-handler/service"
-	storageHandlerPb "github.com/ocfl-archive/dlza-manager-storage-handler/storagehandlerproto"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	"github.com/patrickmn/go-cache"
-	"github.com/rs/zerolog"
 	tusd "github.com/tus/tusd/v2/pkg/handler"
 	"github.com/tus/tusd/v2/pkg/s3store"
+	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger/v2"
+	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -38,12 +37,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
-var configParam = flag.String("config", "", "config file in toml format, no need for filetype for this param")
+var configFile = flag.String("config", "", "config file in toml format")
 
 const separator = "+"
 
@@ -83,49 +82,93 @@ func (s staticResolver) ResolveEndpoint(ctx context.Context, params s3.EndpointP
 func main() {
 
 	flag.Parse()
-	cfg := config.GetConfig(*configParam)
 
-	clientStorageHandlerHandler, connectionStorageHandlerHandler, err := handlerClient.NewStorageHandlerHandlerClient(cfg.Handler.Host+":"+strconv.Itoa(cfg.Handler.Port), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	var cfgFS fs.FS
+	var cfgFile string
+	if *configFile != "" {
+		cfgFS = os.DirFS(filepath.Dir(*configFile))
+		cfgFile = filepath.Base(*configFile)
+	} else {
+		cfgFS = config.ConfigFS
+		cfgFile = "storagehandler.toml"
+	}
+
+	conf := &config.Config{
+		LocalAddr: "localhost:8443",
+		//ResolverTimeout: config.Duration(10 * time.Minute),
+		ExternalAddr:            "https://localhost:8443",
+		ResolverTimeout:         configutil.Duration(10 * time.Minute),
+		ResolverNotFoundTimeout: configutil.Duration(10 * time.Second),
+		ServerTLS: &loader.Config{
+			Type: "DEV",
+		},
+		ClientTLS: &loader.Config{
+			Type: "DEV",
+		},
+	}
+	if err := config.LoadConfig(cfgFS, cfgFile, conf); err != nil {
+		log.Fatalf("cannot load toml from [%v] %s: %v", cfgFS, cfgFile, err)
+	}
+	// create logger instance
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Fatalf("cannot get hostname: %v", err)
+	}
+
+	var loggerTLSConfig *tls.Config
+	var loggerLoader io.Closer
+	if conf.Log.Stash.TLS != nil {
+		loggerTLSConfig, loggerLoader, err = loader.CreateClientLoader(conf.Log.Stash.TLS, nil)
+		if err != nil {
+			log.Fatalf("cannot create client loader: %v", err)
+		}
+		defer loggerLoader.Close()
+	}
+
+	_logger, _logstash, _logfile, err := ublogger.CreateUbMultiLoggerTLS(conf.Log.Level, conf.Log.File,
+		ublogger.SetDataset(conf.Log.Stash.Dataset),
+		ublogger.SetLogStash(conf.Log.Stash.LogstashHost, conf.Log.Stash.LogstashPort, conf.Log.Stash.Namespace, conf.Log.Stash.LogstashTraceLevel),
+		ublogger.SetTLS(conf.Log.Stash.TLS != nil),
+		ublogger.SetTLSConfig(loggerTLSConfig),
+	)
+	if err != nil {
+		log.Fatalf("cannot create logger: %v", err)
+	}
+	if _logstash != nil {
+		defer _logstash.Close()
+	}
+
+	if _logfile != nil {
+		defer _logfile.Close()
+	}
+
+	l2 := _logger.With().Timestamp().Str("host", hostname).Logger() //.Output(output)
+	var logger zLogger.ZLogger = &l2
+
+	clientStorageHandlerHandler, connectionStorageHandlerHandler, err := handlerClient.NewStorageHandlerHandlerClient("cfg.Handler.Hoststrconv.Itoa(cfg.Handler.Port)", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer connectionStorageHandlerHandler.Close()
 
-	// create logger instance
-	var out io.Writer = os.Stdout
-	if string(cfg.Logging.LogFile) != "" {
-		fp, err := os.OpenFile(string(cfg.Logging.LogFile), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
-		if err != nil {
-			log.Fatalf("cannot open logfile %s: %v", string(cfg.Logging.LogFile), err)
-		}
-		defer fp.Close()
-		out = fp
-	}
-
-	output := zerolog.ConsoleWriter{Out: out, TimeFormat: time.RFC3339}
-	_logger := zerolog.New(output).With().Timestamp().Logger()
-	_logger.Level(zLogger.LogLevel(string(cfg.Logging.LogLevel)))
-	var logger zLogger.ZLogger = &_logger
-	daLogger := zLogger.NewZWrapper(logger)
-
 	//Listen Clerk and Dispatcher
-	lisDispatcher, err := net.Listen("tcp", ":"+strconv.Itoa(cfg.StorageHandler.Port))
+	lisDispatcher, err := net.Listen("tcp", ":"+"cfg.StorageHandler.Port")
 	if err != nil {
 		panic(errors.Wrapf(err, "Failed to listen gRPC server"))
 	}
 	grpcServerStorageHandler := grpc.NewServer()
-	storageHandlerPb.RegisterDispatcherStorageHandlerServiceServer(grpcServerStorageHandler, &server.DispatcherStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: daLogger})
-	storageHandlerPb.RegisterClerkStorageHandlerServiceServer(grpcServerStorageHandler, &server.ClerkStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler})
+	//storageHandlerPb.RegisterDispatcherStorageHandlerServiceServer(grpcServerStorageHandler, &server.DispatcherStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: daLogger})
+	//storageHandlerPb.RegisterClerkStorageHandlerServiceServer(grpcServerStorageHandler, &server.ClerkStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler})
 	log.Printf("server started at %v", lisDispatcher.Addr())
 	go func() {
 		if err := grpcServerStorageHandler.Serve(lisDispatcher); err != nil {
-			panic(errors.Wrapf(err, "Failed to serve gRPC server on port: %v", cfg.StorageHandler.Port))
+			panic(errors.Wrapf(err, "Failed to serve gRPC server on port: %v", "some port"))
 		}
 	}()
-	uploaderService := service2.UploaderService{StorageHandlerHandlerServiceClient: clientStorageHandlerHandler, Logger: &logger, ConfigObj: cfg}
+	uploaderService := service2.UploaderService{StorageHandlerHandlerServiceClient: nil, Logger: &logger, ConfigObj: *conf}
 	ctx := context.Background()
 	cs := cache.New(60*time.Minute, 60*time.Minute)
-	credentialsS3 := credentials.NewStaticCredentialsProvider("AKIAFEDBDB2704C24D21", "0jmsjtQd0ka66thzFDJn6ESUeiLii4dIHHHgTPU6", "")
+	credentialsS3 := credentials.NewStaticCredentialsProvider(conf.S3TempStorage.Key, conf.S3TempStorage.Secret, "")
 
 	// Obtaining the S3 SDK client configuration based on the passed parameters.
 	cnf, err := configuration.LoadDefaultConfig(
@@ -138,13 +181,13 @@ func main() {
 	}
 	// Create a new S3 SDK client instance.
 	svc := s3.NewFromConfig(cnf, func(o *s3.Options) {
-		o.EndpointResolverV2 = staticResolver{url: "https://vip-ecs-ub.storage.p.unibas.ch/"}
+		o.EndpointResolverV2 = staticResolver{url: conf.S3TempStorage.ApiUrlValue}
 	})
 
 	// Create a new S3 SDK client instance.
 	composer := tusd.NewStoreComposer()
 
-	s3Store := s3store.New("ubbasel-test", &service.S3Service{Client: svc, AddDisableEndpointPrefix: addDisableEndpointPrefix})
+	s3Store := s3store.New(conf.S3TempStorage.Bucket, &service.S3Service{Client: svc, AddDisableEndpointPrefix: addDisableEndpointPrefix})
 
 	s3Store.UseIn(composer)
 	handler, err := tusd.NewHandler(tusd.Config{
@@ -166,7 +209,7 @@ func main() {
 			case event := <-handler.CompleteUploads:
 				fmt.Printf("Upload %s finished\n", event.Upload.ID)
 
-				basePathString := "vfs:/temp_switch_ch" + "/" + "ubbasel-test" + "/"
+				basePathString := conf.S3TempStorage.UploadFolder + "/" + conf.S3TempStorage.Bucket + "/"
 				uploadId := strings.Split(event.Upload.ID, separator)[0]
 				filename := event.HTTPRequest.Header.Get("FileName")
 				objectJson := event.HTTPRequest.Header.Get("ObjectJson")
@@ -176,7 +219,7 @@ func main() {
 				if err != nil {
 					log.Printf("could not AlterStatus with status id %s:  to copied to temp storage", statusId)
 				}
-				objectAndFiles, err := uploaderService.CreateObjectAndFiles(uploadId, objectJson, collection, cfg)
+				objectAndFiles, err := uploaderService.CreateObjectAndFiles(uploadId, objectJson, collection, *conf)
 				if err != nil {
 					log.Printf("could not CreateObjectAndFiles for upload id %s: %v", event.Upload.ID, err)
 				} else {
@@ -196,29 +239,31 @@ func main() {
 			}
 		}
 	}()
+	/*
+		var cert tls.Certificate
+		if cfg.ServerConfig.TLSCert == "" {
+			certBytes, err := fs.ReadFile(certs.CertFS, "localhost.cert.pem")
+			if err != nil {
+				emperror.Panic(errors.Wrapf(err, "cannot read internal cert %v/%s", certs.CertFS, "localhost.cert.pem"))
+			}
+			keyBytes, err := fs.ReadFile(certs.CertFS, "localhost.key.pem")
+			if err != nil {
+				emperror.Panic(errors.Wrapf(err, "cannot read internal key %v/%s", certs.CertFS, "localhost.key.pem"))
+			}
+			if cert, err = tls.X509KeyPair(certBytes, keyBytes); err != nil {
+				emperror.Panic(errors.Wrap(err, "cannot create internal cert"))
+			}
+		} else {
+			if cert, err = tls.LoadX509KeyPair(conf.ServerConfig.TLSCert, cfg.ServerConfig.TLSKey); err != nil {
+				emperror.Panic(errors.Wrapf(err, "cannot load key pair %s - %s", cfg.ServerConfig.TLSCert, cfg.ServerConfig.TLSKey))
+			}
+		}
 
-	var cert tls.Certificate
-	if cfg.ServerConfig.TLSCert == "" {
-		certBytes, err := fs.ReadFile(certs.CertFS, "localhost.cert.pem")
-		if err != nil {
-			emperror.Panic(errors.Wrapf(err, "cannot read internal cert %v/%s", certs.CertFS, "localhost.cert.pem"))
+		var tlsConfig = &tls.Config{
+			Certificates: []tls.Certificate{cert},
 		}
-		keyBytes, err := fs.ReadFile(certs.CertFS, "localhost.key.pem")
-		if err != nil {
-			emperror.Panic(errors.Wrapf(err, "cannot read internal key %v/%s", certs.CertFS, "localhost.key.pem"))
-		}
-		if cert, err = tls.X509KeyPair(certBytes, keyBytes); err != nil {
-			emperror.Panic(errors.Wrap(err, "cannot create internal cert"))
-		}
-	} else {
-		if cert, err = tls.LoadX509KeyPair(cfg.ServerConfig.TLSCert, cfg.ServerConfig.TLSKey); err != nil {
-			emperror.Panic(errors.Wrapf(err, "cannot load key pair %s - %s", cfg.ServerConfig.TLSCert, cfg.ServerConfig.TLSKey))
-		}
-	}
 
-	var tlsConfig = &tls.Config{
-		Certificates: []tls.Certificate{cert},
-	}
+	*/
 	corsV := cors.New(cors.Config{
 		AllowAllOrigins: true,
 		// AllowOrigins:  []string{"http://example.com"},
@@ -269,9 +314,9 @@ func main() {
 	router.GET("/files/:id", gin.WrapF(handler.GetFile))
 
 	server := http.Server{
-		Addr:      "localhost:8085",
-		Handler:   router,
-		TLSConfig: tlsConfig,
+		Addr:    "localhost:8085",
+		Handler: router,
+		//TLSConfig: tlsConfig,
 	}
 
 	if err := http2.ConfigureServer(&server, nil); err != nil {
