@@ -11,7 +11,9 @@ option csharp_namespace = "Unibas.UB.StorageHandler.PG";
 
 package storagehandlerproto;
 
+import "google/protobuf/empty.proto";
 import "dlza_proto.proto";
+import "defaultResponse.proto";
 
 service UploaderHandlerService {
   rpc TenantHasAccess(dlzamanagerproto.UploaderAccessObject) returns (dlzamanagerproto.Status) {};
@@ -68,5 +70,6 @@ service ClerkHandlerService {
 }
 
 service DispatcherStorageHandlerService {
+  rpc Ping(google.protobuf.Empty) returns (genericproto.DefaultResponse) {}
   rpc ChangeQualityForCollections(dlzamanagerproto.CollectionAliases) returns (dlzamanagerproto.NoParam) {};
 }

@@ -11,9 +11,11 @@ package storagehandlerproto
 import (
 	context "context"
 	dlzamanagerproto "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
+	proto "go.ub.unibas.ch/cloud/genericproto/v2/pkg/generic/proto"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -1589,6 +1591,7 @@ var ClerkHandlerService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
+	DispatcherStorageHandlerService_Ping_FullMethodName                        = "/storagehandlerproto.DispatcherStorageHandlerService/Ping"
 	DispatcherStorageHandlerService_ChangeQualityForCollections_FullMethodName = "/storagehandlerproto.DispatcherStorageHandlerService/ChangeQualityForCollections"
 )
 
@@ -1596,6 +1599,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DispatcherStorageHandlerServiceClient interface {
+	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*proto.DefaultResponse, error)
 	ChangeQualityForCollections(ctx context.Context, in *dlzamanagerproto.CollectionAliases, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error)
 }
 
@@ -1605,6 +1609,15 @@ type dispatcherStorageHandlerServiceClient struct {
 
 func NewDispatcherStorageHandlerServiceClient(cc grpc.ClientConnInterface) DispatcherStorageHandlerServiceClient {
 	return &dispatcherStorageHandlerServiceClient{cc}
+}
+
+func (c *dispatcherStorageHandlerServiceClient) Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*proto.DefaultResponse, error) {
+	out := new(proto.DefaultResponse)
+	err := c.cc.Invoke(ctx, DispatcherStorageHandlerService_Ping_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *dispatcherStorageHandlerServiceClient) ChangeQualityForCollections(ctx context.Context, in *dlzamanagerproto.CollectionAliases, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error) {
@@ -1620,6 +1633,7 @@ func (c *dispatcherStorageHandlerServiceClient) ChangeQualityForCollections(ctx 
 // All implementations must embed UnimplementedDispatcherStorageHandlerServiceServer
 // for forward compatibility
 type DispatcherStorageHandlerServiceServer interface {
+	Ping(context.Context, *emptypb.Empty) (*proto.DefaultResponse, error)
 	ChangeQualityForCollections(context.Context, *dlzamanagerproto.CollectionAliases) (*dlzamanagerproto.NoParam, error)
 	mustEmbedUnimplementedDispatcherStorageHandlerServiceServer()
 }
@@ -1628,6 +1642,9 @@ type DispatcherStorageHandlerServiceServer interface {
 type UnimplementedDispatcherStorageHandlerServiceServer struct {
 }
 
+func (UnimplementedDispatcherStorageHandlerServiceServer) Ping(context.Context, *emptypb.Empty) (*proto.DefaultResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+}
 func (UnimplementedDispatcherStorageHandlerServiceServer) ChangeQualityForCollections(context.Context, *dlzamanagerproto.CollectionAliases) (*dlzamanagerproto.NoParam, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ChangeQualityForCollections not implemented")
 }
@@ -1643,6 +1660,24 @@ type UnsafeDispatcherStorageHandlerServiceServer interface {
 
 func RegisterDispatcherStorageHandlerServiceServer(s grpc.ServiceRegistrar, srv DispatcherStorageHandlerServiceServer) {
 	s.RegisterService(&DispatcherStorageHandlerService_ServiceDesc, srv)
+}
+
+func _DispatcherStorageHandlerService_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DispatcherStorageHandlerServiceServer).Ping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DispatcherStorageHandlerService_Ping_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DispatcherStorageHandlerServiceServer).Ping(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _DispatcherStorageHandlerService_ChangeQualityForCollections_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -1670,6 +1705,10 @@ var DispatcherStorageHandlerService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "storagehandlerproto.DispatcherStorageHandlerService",
 	HandlerType: (*DispatcherStorageHandlerServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Ping",
+			Handler:    _DispatcherStorageHandlerService_Ping_Handler,
+		},
 		{
 			MethodName: "ChangeQualityForCollections",
 			Handler:    _DispatcherStorageHandlerService_ChangeQualityForCollections_Handler,
