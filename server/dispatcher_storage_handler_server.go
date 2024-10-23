@@ -86,103 +86,103 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 				}
 
 				path := connection.Folder + storagePartition.Alias + "/" + filepath.Base(pathToCopyFrom)
+				sourceFP, err := vfs.Open(pathToCopyFrom)
+				if err == nil {
+					storagePartition.CurrentSize += int64(objectPb.Size)
+					storagePartition.CurrentObjects++
+					objectInstance := &pb.ObjectInstance{Path: path, Status: "new", ObjectId: objectPb.Id, StoragePartitionId: storagePartition.Id, Size: objectPb.Size}
+					_, err = d.ClientStorageHandlerHandler.CreateObjectInstance(ctx, objectInstance)
+					if err != nil {
+						d.Logger.Errorf("Could not create objectInstance for object with ID: %v", objectPb.Id)
+						continue
+					}
+					_, err = d.ClientStorageHandlerHandler.UpdateStoragePartition(ctx, storagePartition)
+					if err != nil {
+						d.Logger.Errorf("Could not update storage partition with ID: %v", storagePartition.Id)
+						continue
+					}
+					err = func() error {
 
-				storagePartition.CurrentSize += int64(objectPb.Size)
-				storagePartition.CurrentObjects++
-				objectInstance := &pb.ObjectInstance{Path: path, Status: "new", ObjectId: objectPb.Id, StoragePartitionId: storagePartition.Id, Size: objectPb.Size}
-				_, err = d.ClientStorageHandlerHandler.CreateObjectInstance(ctx, objectInstance)
-				if err != nil {
-					d.Logger.Errorf("Could not create objectInstance for object with ID: %v", objectPb.Id)
-					return &pb.NoParam{}, errors.Wrapf(err, "Could not create objectInstance for object with ID: %v", objectPb.Id)
-				}
-				_, err = d.ClientStorageHandlerHandler.UpdateStoragePartition(ctx, storagePartition)
-				if err != nil {
-					d.Logger.Errorf("Could not update storage partition with ID: %v", storagePartition.Id)
-					return &pb.NoParam{}, errors.Wrapf(err, "Could not update storage partition with ID: %v", storagePartition.Id)
-				}
-				err = func() error {
-					sourceFP, err := vfs.Open(pathToCopyFrom)
-					if err != nil {
-						d.Logger.Errorf("cannot open file '%s': %v", pathToCopyFrom, err)
-						return errors.Wrapf(err, "cannot open file '%s': %v", pathToCopyFrom, err)
-					}
-					defer func() {
-						if err := sourceFP.Close(); err != nil {
-							d.Logger.Errorf("cannot close source: %v", err)
+						targetFP, err := writefs.Create(vfs, path)
+						if err != nil {
+							d.Logger.Errorf("cannot create target for path '%s': %v", path, err)
+							sourceFP.Close()
+							return errors.Wrapf(err, "cannot create target for path '%s': %v", path, err)
 						}
-					}()
-
-					targetFP, err := writefs.Create(vfs, path)
-					if err != nil {
-						d.Logger.Errorf("cannot create target for path '%s': %v", path, err)
-						return errors.Wrapf(err, "cannot create target for path '%s': %v", path, err)
-					}
-					defer func() {
-						if err := targetFP.Close(); err != nil {
-							d.Logger.Errorf("cannot close target: %v", err)
+						defer func() {
+							if err := targetFP.Close(); err != nil {
+								d.Logger.Errorf("cannot close target: %v", err)
+							}
+						}()
+						csWriter, err := checksum.NewChecksumWriter(
+							[]checksum.DigestAlgorithm{checksum.DigestSHA512},
+							targetFP,
+						)
+						if err != nil {
+							d.Logger.Errorf("cannot create checksum writer for file '%s%s': %v", vfs, path, err)
+							sourceFP.Close()
+							return errors.Wrapf(err, "cannot create checksum writer for file '%s%s': %v", vfs, path, err)
 						}
-					}()
-					csWriter, err := checksum.NewChecksumWriter(
-						[]checksum.DigestAlgorithm{checksum.DigestSHA512},
-						targetFP,
-					)
-					if err != nil {
-						d.Logger.Errorf("cannot create checksum writer for file '%s%s': %v", vfs, path, err)
-						return errors.Wrapf(err, "cannot create checksum writer for file '%s%s': %v", vfs, path, err)
-					}
-					_, err = io.Copy(csWriter, sourceFP)
-					if err != nil {
+						_, err = io.Copy(csWriter, sourceFP)
+						if err != nil {
+							if err := csWriter.Close(); err != nil {
+								d.Logger.Errorf("cannot close checksum writer: %v", err)
+								return errors.Wrapf(err, "cannot close checksum writer: %v", err)
+							}
+							d.Logger.Errorf("error writing file to path '%s%s': %v", vfs, path, err)
+							sourceFP.Close()
+							return errors.Wrapf(err, "error writing file to path '%s%s': %v", vfs, path, err)
+						}
 						if err := csWriter.Close(); err != nil {
 							d.Logger.Errorf("cannot close checksum writer: %v", err)
 							return errors.Wrapf(err, "cannot close checksum writer: %v", err)
 						}
-						d.Logger.Errorf("error writing file to path '%s%s': %v", vfs, path, err)
-						return errors.Wrapf(err, "error writing file to path '%s%s': %v", vfs, path, err)
+						sourceFP.Close()
+						return nil
+					}()
+					if err != nil {
+						d.Logger.Errorf("cannot copy object from: %s", pathToCopyFrom)
+						continue
 					}
-					if err := csWriter.Close(); err != nil {
-						d.Logger.Errorf("cannot close checksum writer: %v", err)
-						return errors.Wrapf(err, "cannot close checksum writer: %v", err)
+
+					//ToDo Decide what to do with deletion
+					storageLocationsToDeleteFrom.StorageLocations = nil
+					// Delete redundant objectInstances and objects from storageLocations
+					if len(storageLocationsToDeleteFrom.StorageLocations) != 0 {
+						for _, storageLocationToDeleteFrom := range storageLocationsToDeleteFrom.StorageLocations {
+							storagePartitionsForLocationIdToDelete, err := d.ClientStorageHandlerHandler.GetStoragePartitionsByStorageLocationId(ctx, &pb.Id{Id: storageLocationToDeleteFrom.Id})
+							if err != nil {
+								d.Logger.Errorf("cannot get storagePartitions for storageLocation: %v", storageLocationToDeleteFrom.Alias)
+								return &pb.NoParam{}, errors.Wrapf(err, "cannot get storagePartition for storageLocation: %v", storageLocationToDeleteFrom.Alias)
+							}
+							objectInstancesWithPartitionsToDelete := service.GetObjectInstancesToDelete(ObjectInstancesPb, storagePartitionsForLocationIdToDelete)
+							for objectInstanceToDelete, partitionToDelete := range objectInstancesWithPartitionsToDelete {
+
+								if err := writefs.Remove(vfs, objectInstanceToDelete.Path); err != nil {
+									d.Logger.Errorf("error deleting file to '%s': %v", objectInstanceToDelete.Path, err)
+									return &pb.NoParam{}, errors.Wrapf(err, "error writing file to '%s': %v", path, err)
+								}
+
+								_, err = d.ClientStorageHandlerHandler.DeleteObjectInstance(ctx, &pb.Id{Id: objectInstanceToDelete.Id})
+								if err != nil {
+									d.Logger.Errorf("Could not delete objectInstance with ID: %v", objectInstanceToDelete.Id)
+									return &pb.NoParam{}, errors.Wrapf(err, "Could not delete objectInstance with ID: %v", objectInstanceToDelete.Id)
+								}
+
+								partitionToDelete.CurrentSize -= int64(objectInstanceToDelete.Size)
+								partitionToDelete.CurrentObjects--
+								_, err = d.ClientStorageHandlerHandler.UpdateStoragePartition(ctx, partitionToDelete)
+								if err != nil {
+									d.Logger.Errorf("Could not update storage partition with ID: %v", partitionToDelete.Id)
+									return &pb.NoParam{}, errors.Wrapf(err, "Could not update storage partition with ID: %v", partitionToDelete.Id)
+								}
+							}
+						}
 					}
-					return nil
-				}()
-				if err != nil {
-					d.Logger.Errorf("cannot copy object from: %s", pathToCopyFrom)
+				} else {
+					d.Logger.Errorf("cannot open file '%s': %v", pathToCopyFrom, err)
+					vfs.Close()
 					continue
-				}
-
-				//ToDo Decide what to do with deletion
-				storageLocationsToDeleteFrom.StorageLocations = nil
-				// Delete redundant objectInstances and objects from storageLocations
-				if len(storageLocationsToDeleteFrom.StorageLocations) != 0 {
-					for _, storageLocationToDeleteFrom := range storageLocationsToDeleteFrom.StorageLocations {
-						storagePartitionsForLocationIdToDelete, err := d.ClientStorageHandlerHandler.GetStoragePartitionsByStorageLocationId(ctx, &pb.Id{Id: storageLocationToDeleteFrom.Id})
-						if err != nil {
-							d.Logger.Errorf("cannot get storagePartitions for storageLocation: %v", storageLocationToDeleteFrom.Alias)
-							return &pb.NoParam{}, errors.Wrapf(err, "cannot get storagePartition for storageLocation: %v", storageLocationToDeleteFrom.Alias)
-						}
-						objectInstancesWithPartitionsToDelete := service.GetObjectInstancesToDelete(ObjectInstancesPb, storagePartitionsForLocationIdToDelete)
-						for objectInstanceToDelete, partitionToDelete := range objectInstancesWithPartitionsToDelete {
-
-							if err := writefs.Remove(vfs, objectInstanceToDelete.Path); err != nil {
-								d.Logger.Errorf("error deleting file to '%s': %v", objectInstanceToDelete.Path, err)
-								return &pb.NoParam{}, errors.Wrapf(err, "error writing file to '%s': %v", path, err)
-							}
-
-							_, err = d.ClientStorageHandlerHandler.DeleteObjectInstance(ctx, &pb.Id{Id: objectInstanceToDelete.Id})
-							if err != nil {
-								d.Logger.Errorf("Could not delete objectInstance with ID: %v", objectInstanceToDelete.Id)
-								return &pb.NoParam{}, errors.Wrapf(err, "Could not delete objectInstance with ID: %v", objectInstanceToDelete.Id)
-							}
-
-							partitionToDelete.CurrentSize -= int64(objectInstanceToDelete.Size)
-							partitionToDelete.CurrentObjects--
-							_, err = d.ClientStorageHandlerHandler.UpdateStoragePartition(ctx, partitionToDelete)
-							if err != nil {
-								d.Logger.Errorf("Could not update storage partition with ID: %v", partitionToDelete.Id)
-								return &pb.NoParam{}, errors.Wrapf(err, "Could not update storage partition with ID: %v", partitionToDelete.Id)
-							}
-						}
-					}
 				}
 			}
 			vfs.Close()
