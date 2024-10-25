@@ -109,7 +109,7 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 		}
 	*/
 
-	ocflFS, err := fsFactory.Get("arn:cache:s3:::" + "ubbasel-test" + "/" + tusFileName)
+	ocflFS, err := fsFactory.Get("arn:cache:s3:::" + conf.S3TempStorage.Bucket + "/" + tusFileName)
 
 	if err != nil {
 		daLogger.Errorf("cannot get filesystem for file '%s': %v", tusFileName, err)
