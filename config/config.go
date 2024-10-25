@@ -12,7 +12,7 @@ import (
 
 type Config struct {
 	LocalAddr               string             `toml:"localaddr"`
-	Domains                 []string           `toml:"domains"`
+	Domain                  string             `toml:"domain"`
 	ExternalAddr            string             `toml:"externaladdr"`
 	Bearer                  string             `toml:"bearer"`
 	ResolverAddr            string             `toml:"resolveraddr"`

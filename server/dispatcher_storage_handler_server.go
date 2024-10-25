@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/je4/utils/v2/pkg/checksum"
-	zw "github.com/je4/utils/v2/pkg/zLogger"
+	"github.com/je4/utils/v2/pkg/zLogger"
 	handlerPb "github.com/ocfl-archive/dlza-manager-handler/handlerproto"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/models"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/service"
@@ -21,7 +21,7 @@ import (
 type DispatcherStorageHandlerServer struct {
 	storageHandlerPb.UnimplementedDispatcherStorageHandlerServiceServer
 	ClientStorageHandlerHandler handlerPb.StorageHandlerHandlerServiceClient
-	Logger                      zw.ZWrapper
+	Logger                      zLogger.ZLogger
 }
 
 func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context.Context, collectionAliases *pb.CollectionAliases) (*pb.NoParam, error) {
@@ -33,7 +33,7 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 			return &pb.NoParam{}, errors.Wrapf(err, "cannot get storageLocations for collection: %v", collectionAlias)
 		}
 		if storageLocationsPb.StorageLocations == nil {
-			d.Logger.Warningf("The collection " + collectionAlias.CollectionAlias + " doesn't have enough storage locations")
+			d.Logger.Warn().Msgf("The collection " + collectionAlias.CollectionAlias + " doesn't have enough storage locations")
 			continue
 		}
 
@@ -58,10 +58,10 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 			if err != nil {
 				return &pb.NoParam{}, errors.Wrapf(err, "cannot load storage-handler config: %v", err)
 			}
-
-			vfs, err := vfsrw.NewFS(config.VFS, d.Logger)
+			daLogger := zLogger.NewZWrapper(d.Logger)
+			vfs, err := vfsrw.NewFS(config.VFS, daLogger)
 			if err != nil {
-				d.Logger.Warningf("cannot create vfs: %v", err)
+				d.Logger.Warn().Msgf("cannot create vfs: %v", err)
 				continue
 			}
 
@@ -75,13 +75,13 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 			for _, storageLocation := range storageLocationsToCopyIn.StorageLocations {
 				storagePartition, err := d.ClientStorageHandlerHandler.GetStoragePartitionForLocation(ctx, &pb.SizeAndId{Size: int64(objectPb.Size), Id: storageLocation.Id})
 				if err != nil {
-					d.Logger.Errorf("cannot get storagePartition for storageLocation: %v", storageLocation.Alias)
+					d.Logger.Error().Msgf("cannot get storagePartition for storageLocation: %v", storageLocation.Alias)
 					return &pb.NoParam{}, errors.Wrapf(err, "cannot get storagePartition for storageLocation: %v", storageLocation.Alias)
 				}
 				connection := models.Connection{}
 				err = json.Unmarshal([]byte(storageLocation.Connection), &connection)
 				if err != nil {
-					d.Logger.Errorf("error mapping json")
+					d.Logger.Error().Msgf("error mapping json")
 					return &pb.NoParam{}, errors.Wrapf(err, "error mapping json for storageLocation: %v", storageLocation.Alias)
 				}
 
@@ -93,25 +93,25 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 					objectInstance := &pb.ObjectInstance{Path: path, Status: "new", ObjectId: objectPb.Id, StoragePartitionId: storagePartition.Id, Size: objectPb.Size}
 					_, err = d.ClientStorageHandlerHandler.CreateObjectInstance(ctx, objectInstance)
 					if err != nil {
-						d.Logger.Errorf("Could not create objectInstance for object with ID: %v", objectPb.Id)
+						d.Logger.Error().Msgf("Could not create objectInstance for object with ID: %v", objectPb.Id)
 						continue
 					}
 					_, err = d.ClientStorageHandlerHandler.UpdateStoragePartition(ctx, storagePartition)
 					if err != nil {
-						d.Logger.Errorf("Could not update storage partition with ID: %v", storagePartition.Id)
+						d.Logger.Error().Msgf("Could not update storage partition with ID: %v", storagePartition.Id)
 						continue
 					}
 					err = func() error {
 
 						targetFP, err := writefs.Create(vfs, path)
 						if err != nil {
-							d.Logger.Errorf("cannot create target for path '%s': %v", path, err)
+							d.Logger.Error().Msgf("cannot create target for path '%s': %v", path, err)
 							sourceFP.Close()
 							return errors.Wrapf(err, "cannot create target for path '%s': %v", path, err)
 						}
 						defer func() {
 							if err := targetFP.Close(); err != nil {
-								d.Logger.Errorf("cannot close target: %v", err)
+								d.Logger.Error().Msgf("cannot close target: %v", err)
 							}
 						}()
 						csWriter, err := checksum.NewChecksumWriter(
@@ -119,29 +119,29 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 							targetFP,
 						)
 						if err != nil {
-							d.Logger.Errorf("cannot create checksum writer for file '%s%s': %v", vfs, path, err)
+							d.Logger.Error().Msgf("cannot create checksum writer for file '%s%s': %v", vfs, path, err)
 							sourceFP.Close()
 							return errors.Wrapf(err, "cannot create checksum writer for file '%s%s': %v", vfs, path, err)
 						}
 						_, err = io.Copy(csWriter, sourceFP)
 						if err != nil {
 							if err := csWriter.Close(); err != nil {
-								d.Logger.Errorf("cannot close checksum writer: %v", err)
+								d.Logger.Error().Msgf("cannot close checksum writer: %v", err)
 								return errors.Wrapf(err, "cannot close checksum writer: %v", err)
 							}
-							d.Logger.Errorf("error writing file to path '%s%s': %v", vfs, path, err)
+							d.Logger.Error().Msgf("error writing file to path '%s%s': %v", vfs, path, err)
 							sourceFP.Close()
 							return errors.Wrapf(err, "error writing file to path '%s%s': %v", vfs, path, err)
 						}
 						if err := csWriter.Close(); err != nil {
-							d.Logger.Errorf("cannot close checksum writer: %v", err)
+							d.Logger.Error().Msgf("cannot close checksum writer: %v", err)
 							return errors.Wrapf(err, "cannot close checksum writer: %v", err)
 						}
 						sourceFP.Close()
 						return nil
 					}()
 					if err != nil {
-						d.Logger.Errorf("cannot copy object from: %s", pathToCopyFrom)
+						d.Logger.Error().Msgf("cannot copy object from: %s", pathToCopyFrom)
 						continue
 					}
 
@@ -152,20 +152,20 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 						for _, storageLocationToDeleteFrom := range storageLocationsToDeleteFrom.StorageLocations {
 							storagePartitionsForLocationIdToDelete, err := d.ClientStorageHandlerHandler.GetStoragePartitionsByStorageLocationId(ctx, &pb.Id{Id: storageLocationToDeleteFrom.Id})
 							if err != nil {
-								d.Logger.Errorf("cannot get storagePartitions for storageLocation: %v", storageLocationToDeleteFrom.Alias)
+								d.Logger.Error().Msgf("cannot get storagePartitions for storageLocation: %v", storageLocationToDeleteFrom.Alias)
 								return &pb.NoParam{}, errors.Wrapf(err, "cannot get storagePartition for storageLocation: %v", storageLocationToDeleteFrom.Alias)
 							}
 							objectInstancesWithPartitionsToDelete := service.GetObjectInstancesToDelete(ObjectInstancesPb, storagePartitionsForLocationIdToDelete)
 							for objectInstanceToDelete, partitionToDelete := range objectInstancesWithPartitionsToDelete {
 
 								if err := writefs.Remove(vfs, objectInstanceToDelete.Path); err != nil {
-									d.Logger.Errorf("error deleting file to '%s': %v", objectInstanceToDelete.Path, err)
+									d.Logger.Error().Msgf("error deleting file to '%s': %v", objectInstanceToDelete.Path, err)
 									return &pb.NoParam{}, errors.Wrapf(err, "error writing file to '%s': %v", path, err)
 								}
 
 								_, err = d.ClientStorageHandlerHandler.DeleteObjectInstance(ctx, &pb.Id{Id: objectInstanceToDelete.Id})
 								if err != nil {
-									d.Logger.Errorf("Could not delete objectInstance with ID: %v", objectInstanceToDelete.Id)
+									d.Logger.Error().Msgf("Could not delete objectInstance with ID: %v", objectInstanceToDelete.Id)
 									return &pb.NoParam{}, errors.Wrapf(err, "Could not delete objectInstance with ID: %v", objectInstanceToDelete.Id)
 								}
 
@@ -173,14 +173,14 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 								partitionToDelete.CurrentObjects--
 								_, err = d.ClientStorageHandlerHandler.UpdateStoragePartition(ctx, partitionToDelete)
 								if err != nil {
-									d.Logger.Errorf("Could not update storage partition with ID: %v", partitionToDelete.Id)
+									d.Logger.Error().Msgf("Could not update storage partition with ID: %v", partitionToDelete.Id)
 									return &pb.NoParam{}, errors.Wrapf(err, "Could not update storage partition with ID: %v", partitionToDelete.Id)
 								}
 							}
 						}
 					}
 				} else {
-					d.Logger.Errorf("cannot open file '%s': %v", pathToCopyFrom, err)
+					d.Logger.Error().Msgf("cannot open file '%s': %v", pathToCopyFrom, err)
 					vfs.Close()
 					continue
 				}

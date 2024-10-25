@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"emperror.dev/emperror"
-	"emperror.dev/errors"
 	"flag"
 	"fmt"
 	configuration "github.com/aws/aws-sdk-go-v2/config"
@@ -15,30 +13,32 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/je4/trustutil/v2/pkg/certutil"
 	configutil "github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/zLogger"
-	handlerClient "github.com/ocfl-archive/dlza-manager-handler/client"
+	handlerClientProto "github.com/ocfl-archive/dlza-manager-handler/handlerproto"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/config"
+	"github.com/ocfl-archive/dlza-manager-storage-handler/server"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/service"
 	service2 "github.com/ocfl-archive/dlza-manager-storage-handler/service"
+	"github.com/ocfl-archive/dlza-manager-storage-handler/storagehandlerproto"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	"github.com/patrickmn/go-cache"
 	tusd "github.com/tus/tusd/v2/pkg/handler"
 	"github.com/tus/tusd/v2/pkg/s3store"
 	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger/v2"
 	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
-	"golang.org/x/net/http2"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"go.ub.unibas.ch/cloud/miniresolver/v2/pkg/resolver"
 	"io"
 	"io/fs"
 	"log"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -145,27 +145,79 @@ func main() {
 	l2 := _logger.With().Timestamp().Str("host", hostname).Logger() //.Output(output)
 	var logger zLogger.ZLogger = &l2
 
-	clientStorageHandlerHandler, connectionStorageHandlerHandler, err := handlerClient.NewStorageHandlerHandlerClient("cfg.Handler.Hoststrconv.Itoa(cfg.Handler.Port)", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	clientTLSConfig, clientLoader, err := loader.CreateClientLoader(conf.ClientTLS, logger)
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		logger.Panic().Msgf("cannot create client loader: %v", err)
 	}
-	defer connectionStorageHandlerHandler.Close()
+	defer clientLoader.Close()
 
-	//Listen Clerk and Dispatcher
-	lisDispatcher, err := net.Listen("tcp", ":"+"cfg.StorageHandler.Port")
-	if err != nil {
-		panic(errors.Wrapf(err, "Failed to listen gRPC server"))
+	// create TLS Certificate.
+	// the certificate MUST contain <package>.<service> as DNS name
+
+	var domainPrefix string
+	if conf.Domain != "" {
+		domainPrefix = conf.Domain + "."
 	}
-	grpcServerStorageHandler := grpc.NewServer()
-	//storageHandlerPb.RegisterDispatcherStorageHandlerServiceServer(grpcServerStorageHandler, &server.DispatcherStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: daLogger})
-	//storageHandlerPb.RegisterClerkStorageHandlerServiceServer(grpcServerStorageHandler, &server.ClerkStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler})
-	log.Printf("server started at %v", lisDispatcher.Addr())
-	go func() {
-		if err := grpcServerStorageHandler.Serve(lisDispatcher); err != nil {
-			panic(errors.Wrapf(err, "Failed to serve gRPC server on port: %v", "some port"))
+	certutil.AddDefaultDNSNames(domainPrefix+storagehandlerproto.DispatcherStorageHandlerService_ServiceDesc.ServiceName, domainPrefix+storagehandlerproto.ClerkStorageHandlerService_ServiceDesc.ServiceName)
+
+	serverTLSConfig, serverLoader, err := loader.CreateServerLoader(true, conf.ServerTLS, nil, logger)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("cannot create server loader")
+	}
+	defer serverLoader.Close()
+
+	logger.Info().Msgf("resolver address is %s", conf.ResolverAddr)
+	resolverClient, err := resolver.NewMiniresolverClient(conf.ResolverAddr, conf.GRPCClient, clientTLSConfig, serverTLSConfig, time.Duration(conf.ResolverTimeout), time.Duration(conf.ResolverNotFoundTimeout), logger)
+	if err != nil {
+		logger.Fatal().Msgf("cannot create resolver client: %v", err)
+	}
+	defer resolverClient.Close()
+
+	// create grpc server with resolver for name resolution
+	grpcServer, err := resolverClient.NewServer(conf.LocalAddr, []string{conf.Domain}, true)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("cannot create server")
+	}
+	addr := grpcServer.GetAddr()
+	l2 = _logger.With().Timestamp().Str("addr", addr).Logger() //.Output(output)
+	logger = &l2
+
+	clientStorageHandlerHandler, err := resolver.NewClient[handlerClientProto.StorageHandlerHandlerServiceClient](
+		resolverClient,
+		handlerClientProto.NewStorageHandlerHandlerServiceClient,
+		handlerClientProto.StorageHandlerHandlerService_ServiceDesc.ServiceName, conf.Domain)
+	if err != nil {
+		logger.Panic().Msgf("cannot create clientStorageHandlerHandler grpc client: %v", err)
+	}
+	resolver.DoPing(clientStorageHandlerHandler, logger)
+
+	/*
+		clientStorageHandlerHandler, connectionStorageHandlerHandler, err := handlerClient.NewStorageHandlerHandlerClient("cfg.Handler.Hoststrconv.Itoa(cfg.Handler.Port)", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			log.Fatalf("did not connect: %v", err)
 		}
-	}()
-	uploaderService := service2.UploaderService{StorageHandlerHandlerServiceClient: nil, Logger: &logger, ConfigObj: *conf}
+		defer connectionStorageHandlerHandler.Close()
+
+		//Listen Clerk and Dispatcher
+		lisDispatcher, err := net.Listen("tcp", ":"+"cfg.StorageHandler.Port")
+		if err != nil {
+			panic(errors.Wrapf(err, "Failed to listen gRPC server"))
+		}
+		grpcServerStorageHandler := grpc.NewServer()
+
+	*/
+	storagehandlerproto.RegisterDispatcherStorageHandlerServiceServer(grpcServer, &server.DispatcherStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger})
+	//storageHandlerPb.RegisterClerkStorageHandlerServiceServer(grpcServerStorageHandler, &server.ClerkStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler})
+	/*
+		log.Printf("server started at %v", lisDispatcher.Addr())
+		go func() {
+			if err := grpcServerStorageHandler.Serve(lisDispatcher); err != nil {
+				panic(errors.Wrapf(err, "Failed to serve gRPC server on port: %v", "some port"))
+			}
+		}()
+
+	*/
+	uploaderService := service2.UploaderService{StorageHandlerHandlerServiceClient: clientStorageHandlerHandler, Logger: &logger, ConfigObj: *conf}
 	ctx := context.Background()
 	cs := cache.New(60*time.Minute, 60*time.Minute)
 	credentialsS3 := credentials.NewStaticCredentialsProvider(conf.S3TempStorage.Key, conf.S3TempStorage.Secret, "")
@@ -241,8 +293,8 @@ func main() {
 	}()
 	/*
 		var cert tls.Certificate
-		if cfg.ServerConfig.TLSCert == "" {
-			certBytes, err := fs.ReadFile(certs.CertFS, "localhost.cert.pem")
+		if conf.ServerConfig.TLSCert == "" {
+			certBytes, err := fs.ReadFile("localhost.cert.pem")
 			if err != nil {
 				emperror.Panic(errors.Wrapf(err, "cannot read internal cert %v/%s", certs.CertFS, "localhost.cert.pem"))
 			}
@@ -254,15 +306,14 @@ func main() {
 				emperror.Panic(errors.Wrap(err, "cannot create internal cert"))
 			}
 		} else {
-			if cert, err = tls.LoadX509KeyPair(conf.ServerConfig.TLSCert, cfg.ServerConfig.TLSKey); err != nil {
-				emperror.Panic(errors.Wrapf(err, "cannot load key pair %s - %s", cfg.ServerConfig.TLSCert, cfg.ServerConfig.TLSKey))
+			if cert, err = tls.LoadX509KeyPair(conf.TLSCert, conf.ServerConfig.TLSKey); err != nil {
+				emperror.Panic(errors.Wrapf(err, "cannot load key pair %s - %s", conf.ServerConfig.TLSCert, conf.ServerConfig.TLSKey))
 			}
 		}
 
 		var tlsConfig = &tls.Config{
 			Certificates: []tls.Certificate{cert},
 		}
-
 	*/
 	corsV := cors.New(cors.Config{
 		AllowAllOrigins: true,
@@ -313,17 +364,29 @@ func main() {
 	router.PATCH("/files/:id", gin.WrapF(handler.PatchFile))
 	router.GET("/files/:id", gin.WrapF(handler.GetFile))
 
-	server := http.Server{
-		Addr:    "localhost:8085",
-		Handler: router,
-		//TLSConfig: tlsConfig,
+	serverTus := http.Server{
+		Addr:      "localhost:8085",
+		Handler:   router,
+		TLSConfig: loggerTLSConfig,
 	}
+	_ = serverTus
+	/*
+		if err := http2.ConfigureServer(&serverTus, nil); err != nil {
+			emperror.Panic(errors.Wrap(err, "cannot configure http2 server"))
+		}
+		if err := serverTus.ListenAndServeTLS("", ""); err != nil {
+			emperror.Panic(errors.Wrap(err, "cannot start http2 server"))
+		}
+		defer serverTus.Close()
 
-	if err := http2.ConfigureServer(&server, nil); err != nil {
-		emperror.Panic(errors.Wrap(err, "cannot configure http2 server"))
-	}
-	if err := server.ListenAndServeTLS("", ""); err != nil {
-		emperror.Panic(errors.Wrap(err, "cannot start http2 server"))
-	}
-	defer server.Close()
+	*/
+
+	grpcServer.Startup()
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+	fmt.Println("press ctrl+c to stop server")
+	s := <-done
+	fmt.Println("got signal:", s)
+
+	defer grpcServer.GracefulStop()
 }
