@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"emperror.dev/emperror"
+	"emperror.dev/errors"
 	"flag"
 	"fmt"
 	configuration "github.com/aws/aws-sdk-go-v2/config"
@@ -17,6 +19,7 @@ import (
 	configutil "github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	handlerClientProto "github.com/ocfl-archive/dlza-manager-handler/handlerproto"
+	"github.com/ocfl-archive/dlza-manager-storage-handler/certs"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/config"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/server"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/service"
@@ -29,6 +32,7 @@ import (
 	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger/v2"
 	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 	"go.ub.unibas.ch/cloud/miniresolver/v2/pkg/resolver"
+	"golang.org/x/net/http2"
 	"io"
 	"io/fs"
 	"log"
@@ -38,6 +42,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -191,32 +196,10 @@ func main() {
 	}
 	resolver.DoPing(clientStorageHandlerHandler, logger)
 
-	/*
-		clientStorageHandlerHandler, connectionStorageHandlerHandler, err := handlerClient.NewStorageHandlerHandlerClient("cfg.Handler.Hoststrconv.Itoa(cfg.Handler.Port)", grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			log.Fatalf("did not connect: %v", err)
-		}
-		defer connectionStorageHandlerHandler.Close()
-
-		//Listen Clerk and Dispatcher
-		lisDispatcher, err := net.Listen("tcp", ":"+"cfg.StorageHandler.Port")
-		if err != nil {
-			panic(errors.Wrapf(err, "Failed to listen gRPC server"))
-		}
-		grpcServerStorageHandler := grpc.NewServer()
-
-	*/
 	storagehandlerproto.RegisterDispatcherStorageHandlerServiceServer(grpcServer, &server.DispatcherStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger})
-	//storageHandlerPb.RegisterClerkStorageHandlerServiceServer(grpcServerStorageHandler, &server.ClerkStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler})
-	/*
-		log.Printf("server started at %v", lisDispatcher.Addr())
-		go func() {
-			if err := grpcServerStorageHandler.Serve(lisDispatcher); err != nil {
-				panic(errors.Wrapf(err, "Failed to serve gRPC server on port: %v", "some port"))
-			}
-		}()
 
-	*/
+	//storageHandlerPb.RegisterClerkStorageHandlerServiceServer(grpcServerStorageHandler, &server.ClerkStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler})
+
 	uploaderService := service2.UploaderService{StorageHandlerHandlerServiceClient: clientStorageHandlerHandler, Logger: &logger, ConfigObj: *conf}
 	ctx := context.Background()
 	cs := cache.New(60*time.Minute, 60*time.Minute)
@@ -291,30 +274,29 @@ func main() {
 			}
 		}
 	}()
-	/*
-		var cert tls.Certificate
-		if conf.ServerConfig.TLSCert == "" {
-			certBytes, err := fs.ReadFile("localhost.cert.pem")
-			if err != nil {
-				emperror.Panic(errors.Wrapf(err, "cannot read internal cert %v/%s", certs.CertFS, "localhost.cert.pem"))
-			}
-			keyBytes, err := fs.ReadFile(certs.CertFS, "localhost.key.pem")
-			if err != nil {
-				emperror.Panic(errors.Wrapf(err, "cannot read internal key %v/%s", certs.CertFS, "localhost.key.pem"))
-			}
-			if cert, err = tls.X509KeyPair(certBytes, keyBytes); err != nil {
-				emperror.Panic(errors.Wrap(err, "cannot create internal cert"))
-			}
-		} else {
-			if cert, err = tls.LoadX509KeyPair(conf.TLSCert, conf.ServerConfig.TLSKey); err != nil {
-				emperror.Panic(errors.Wrapf(err, "cannot load key pair %s - %s", conf.ServerConfig.TLSCert, conf.ServerConfig.TLSKey))
-			}
-		}
 
-		var tlsConfig = &tls.Config{
-			Certificates: []tls.Certificate{cert},
+	var cert tls.Certificate
+	if conf.TusServer.TLSCert == "" {
+		certBytes, err := fs.ReadFile(certs.CertFS, "ub-log.ub.unibas.ch.cert.pem")
+		if err != nil {
+			emperror.Panic(errors.Wrapf(err, "cannot read internal cert %v/%s", certs.CertFS, "ub-log.ub.unibas.ch.cert.pem"))
 		}
-	*/
+		keyBytes, err := fs.ReadFile(certs.CertFS, "ub-log.ub.unibas.ch.key.pem")
+		if err != nil {
+			emperror.Panic(errors.Wrapf(err, "cannot read internal key %v/%s", certs.CertFS, "ub-log.ub.unibas.ch.key.pem"))
+		}
+		if cert, err = tls.X509KeyPair(certBytes, keyBytes); err != nil {
+			emperror.Panic(errors.Wrap(err, "cannot create internal cert"))
+		}
+	} else {
+		if cert, err = tls.LoadX509KeyPair(conf.TusServer.TLSCert, conf.TusServer.TLSKey); err != nil {
+			emperror.Panic(errors.Wrapf(err, "cannot load key pair %s - %s", conf.TusServer.TLSCert, conf.TusServer.TLSKey))
+		}
+	}
+
+	var tlsConfig = &tls.Config{
+		Certificates: []tls.Certificate{cert},
+	}
 	corsV := cors.New(cors.Config{
 		AllowAllOrigins: true,
 		// AllowOrigins:  []string{"http://example.com"},
@@ -365,28 +347,36 @@ func main() {
 	router.GET("/files/:id", gin.WrapF(handler.GetFile))
 
 	serverTus := http.Server{
-		Addr:      "localhost:8085",
+		Addr:      conf.TusServer.Addr,
 		Handler:   router,
-		TLSConfig: loggerTLSConfig,
+		TLSConfig: tlsConfig,
 	}
-	_ = serverTus
-	/*
-		if err := http2.ConfigureServer(&serverTus, nil); err != nil {
-			emperror.Panic(errors.Wrap(err, "cannot configure http2 server"))
-		}
+
+	var wg = sync.WaitGroup{}
+	if err := http2.ConfigureServer(&serverTus, nil); err != nil {
+		emperror.Panic(errors.Wrap(err, "cannot configure http2 server"))
+	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		if err := serverTus.ListenAndServeTLS("", ""); err != nil {
 			emperror.Panic(errors.Wrap(err, "cannot start http2 server"))
 		}
-		defer serverTus.Close()
+	}()
 
-	*/
-
-	grpcServer.Startup()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		grpcServer.Startup()
+	}()
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 	fmt.Println("press ctrl+c to stop server")
 	s := <-done
 	fmt.Println("got signal:", s)
 
-	defer grpcServer.GracefulStop()
+	serverTus.Close()
+	grpcServer.GracefulStop()
+	fmt.Println("Waiting for server shutdown")
+	wg.Wait()
 }

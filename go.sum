@@ -740,6 +740,8 @@ go.ub.unibas.ch/cloud/certloader/v2 v2.0.12 h1:vxZZ73oP/m7n9XqjV6AnjFmXXYcf9h8jk
 go.ub.unibas.ch/cloud/certloader/v2 v2.0.12/go.mod h1:XIztelg43wy++DFQaX8cBefIDnkjAn0E3rPV4vLAKpw=
 go.ub.unibas.ch/cloud/genericproto/v2 v2.0.4 h1:I5s63ZEyWLg5w4Q6oUUnpOzSzQGSpoMNk4IajNtnBmM=
 go.ub.unibas.ch/cloud/genericproto/v2 v2.0.4/go.mod h1:xvjwyT7AW8q2MEd1hB8UKB7m1HXMwLRk9Er24sefi0U=
+go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.28 h1:IuGxkMO7Iw1YgH6BOkgWolqDaClROBy3SyKLfUa0/74=
+go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.28/go.mod h1:ONYsaUwpmrkdCvvAipDxuQhwkV0KB35wvLoCCT0U18Q=
 go.ub.unibas.ch/cloud/minivault/v2 v2.0.5 h1:7ess3uyJnjB2r/wZZuIphFIPnpc1HD1L61X3EbWbxOs=
 go.ub.unibas.ch/cloud/minivault/v2 v2.0.5/go.mod h1:qqS7nGPg3rJ+0OYwxbYQTBuU/3taNxCQYX/Xsv6Q4yc=
 go.uber.org/atomic v1.7.0/go.mod h1:fEN4uk6kAWBTFdckzkM89CLk9XfWZrxpCo0nPH17wJc=

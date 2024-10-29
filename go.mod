@@ -3,7 +3,6 @@ module github.com/ocfl-archive/dlza-manager-storage-handler
 go 1.23.2
 
 require (
-	emperror.dev/emperror v0.33.0
 	emperror.dev/errors v0.8.1
 	github.com/BurntSushi/toml v1.4.0
 	github.com/aws/aws-sdk-go-v2/config v1.28.0
@@ -14,6 +13,7 @@ require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/je4/filesystem/v2 v2.0.15
 	github.com/je4/indexer/v3 v3.0.6
+	github.com/je4/trustutil/v2 v2.0.26
 	github.com/je4/utils/v2 v2.0.51
 	github.com/ocfl-archive/dlza-manager v0.0.7
 	github.com/ocfl-archive/dlza-manager-handler v0.0.8
@@ -24,13 +24,14 @@ require (
 	gitlab.switch.ch/ub-unibas/go-ublogger/v2 v2.0.1
 	go.ub.unibas.ch/cloud/certloader/v2 v2.0.12
 	go.ub.unibas.ch/cloud/genericproto/v2 v2.0.4
-	golang.org/x/net v0.30.0
+	go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.28
 	google.golang.org/grpc v1.67.1
 	google.golang.org/protobuf v1.35.1
 )
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
+	emperror.dev/emperror v0.33.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
@@ -98,7 +99,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/je4/filesystem/v3 v3.0.17 // indirect
 	github.com/je4/goffmpeg v0.0.0-20220114092308-33ab9986404d // indirect
-	github.com/je4/trustutil/v2 v2.0.26 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
@@ -157,6 +157,7 @@ require (
 	golang.org/x/crypto v0.28.0 // indirect
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
 	golang.org/x/image v0.21.0 // indirect
+	golang.org/x/net v0.30.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/text v0.19.0 // indirect
 	golang.org/x/tools v0.26.0 // indirect

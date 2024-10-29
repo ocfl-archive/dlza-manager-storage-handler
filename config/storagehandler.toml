@@ -18,7 +18,7 @@ type = "minivault"
 initialtimeout = "1h"
 [server.minivault]
 baseurl = "https://localhost:8759/api/v1"
-parenttoken = "pa.222f350e876c2067.6d532ca47f45a57c" #pa.2dc483e73851c137.15d94e61e0b377f1
+parenttoken = "pa.222c6fc5f525d657.cc31593555530922" #pa.2dc483e73851c137.15d94e61e0b377f1
 tokentype = "server_cert"
 tokenpolicies = ["ubdlza.storagehandler"]
 tokeninterval = "48h"
@@ -38,7 +38,7 @@ type = "minivault"
 initialtimeout = "1h"
 [client.minivault]
 baseurl = "https://localhost:8759/api/v1"
-parenttoken = "pa.222f350e876c2067.6d532ca47f45a57c" #pa.2dc483e73851c137.15d94e61e0b377f1
+parenttoken = "pa.222c6fc5f525d657.cc31593555530922" #pa.2dc483e73851c137.15d94e61e0b377f1
 tokentype = "client_cert"
 tokenpolicies = ["ubdlza.storagehandler"]
 tokeninterval = "48h"
@@ -81,3 +81,6 @@ url = "vip-ecs-ub.storage.p.unibas.ch"
 uploadfolder = "vfs:/temp_switch_ch"
 capem = "ignore"
 debug = false
+
+[tusserver]
+addr = "localhost:8085"

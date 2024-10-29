@@ -24,6 +24,7 @@ type Config struct {
 	GRPCClient              map[string]string  `toml:"grpcclient"`
 	Log                     stashconfig.Config `toml:"log"`
 	S3TempStorage           S3TempStorage      `toml:"s3tempstorage"`
+	TusServer               TusServer          `toml:"tusserver"`
 }
 
 type S3TempStorage struct {
@@ -37,6 +38,13 @@ type S3TempStorage struct {
 	Url          string `yaml:"url" toml:"url"`
 	CAPEM        string `yaml:"capem" toml:"capem"`
 	Debug        bool   `yaml:"debug" toml:"debug"`
+}
+
+type TusServer struct {
+	Addr    string `toml:"addr"`
+	ExtAddr string `toml:"extaddr"`
+	TLSCert string `toml:"tlscert"`
+	TLSKey  string `toml:"tlskey"`
 }
 
 func LoadConfig(fSys fs.FS, fp string, conf *Config) error {

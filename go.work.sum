@@ -3582,6 +3582,7 @@ github.com/zeebo/assert v1.3.0 h1:g7C04CbJuIDKNPFHmsk4hwZDO5O+kntRxzaUoNXj+IQ=
 github.com/zeebo/assert v1.3.0/go.mod h1:Pq9JiuJQpG8JLJdtkwrJESF0Foym2/D9XMU5ciN/wJ0=
 github.com/zenazn/goji v1.0.1 h1:4lbD8Mx2h7IvloP7r2C0D6ltZP6Ufip8Hn0wmSK5LR8=
 github.com/zenazn/goji v1.0.1/go.mod h1:7S9M489iMyHBNxwZnk9/EHS098H4/F6TATF2mIxtB1Q=
+gitlab.switch.ch/ub-unibas/go-ublogger v0.0.0-20240612084645-ba4f8357c0d4 h1:Mek2x+mD9jmCULgl4+OPCCY65A1cqzDjTyB+jx0WUgc=
 gitlab.switch.ch/ub-unibas/go-ublogger v0.0.0-20240612084645-ba4f8357c0d4/go.mod h1:LiuJgHzbImEO1WcPQ2UaMRGLOZA24a79AnPnICp8JOQ=
 gitlab.switch.ch/ub-unibas/go-ublogger v1.0.0 h1:NLP24ZlRzzp1fI3zFlXgAyMjBvUsmn5ca7ddoLExofM=
 gitlab.switch.ch/ub-unibas/go-ublogger v1.0.0/go.mod h1:LiuJgHzbImEO1WcPQ2UaMRGLOZA24a79AnPnICp8JOQ=
