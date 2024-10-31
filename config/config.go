@@ -54,7 +54,7 @@ func LoadConfig(fSys fs.FS, fp string, conf *Config) error {
 			return errors.Wrap(err, "cannot get current working directory")
 		}
 		fSys = os.DirFS(path)
-		fp = "mediaserveraction.toml"
+		fp = "storagehandler.toml"
 	}
 	data, err := fs.ReadFile(fSys, fp)
 	if err != nil {
