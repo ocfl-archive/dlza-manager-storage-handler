@@ -198,8 +198,6 @@ func main() {
 
 	storagehandlerproto.RegisterDispatcherStorageHandlerServiceServer(grpcServer, &server.DispatcherStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger})
 
-	//storageHandlerPb.RegisterClerkStorageHandlerServiceServer(grpcServerStorageHandler, &server.ClerkStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler})
-
 	uploaderService := service2.UploaderService{StorageHandlerHandlerServiceClient: clientStorageHandlerHandler, Logger: &logger, ConfigObj: *conf}
 	ctx := context.Background()
 	cs := cache.New(60*time.Minute, 60*time.Minute)
