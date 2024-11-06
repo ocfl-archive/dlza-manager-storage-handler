@@ -72,5 +72,5 @@ service ClerkHandlerService {
 }
 
 service DispatcherStorageHandlerService {
-  rpc ChangeQualityForCollections(dlzamanagerproto.CollectionAliases) returns (dlzamanagerproto.NoParam) {};
+  rpc ChangeQualityForCollectionWithObjectIds(dlzamanagerproto.CollectionAliases) returns (dlzamanagerproto.NoParam) {};
 }

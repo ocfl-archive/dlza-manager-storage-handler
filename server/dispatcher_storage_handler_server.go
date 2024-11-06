@@ -24,9 +24,9 @@ type DispatcherStorageHandlerServer struct {
 	Logger                      zw.ZWrapper
 }
 
-func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context.Context, collectionAliases *pb.CollectionAliases) (*pb.NoParam, error) {
+func (d *DispatcherStorageHandlerServer) ChangeQualityForCollectionWithObjectIds(ctx context.Context, collectionsWithObjects *pb.CollectionAliases) (*pb.NoParam, error) {
 
-	for _, collectionAlias := range collectionAliases.CollectionAliases {
+	for _, collectionAlias := range collectionsWithObjects.CollectionAliases {
 		//get cheapest storage locations
 		storageLocationsPb, err := d.ClientStorageHandlerHandler.GetStorageLocationsByCollectionAlias(ctx, collectionAlias)
 		if err != nil {
@@ -37,12 +37,12 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollections(ctx context
 			continue
 		}
 
-		ObjectsPb, err := d.ClientStorageHandlerHandler.GetObjectsByCollectionAlias(ctx, collectionAlias)
-		if err != nil {
-			return &pb.NoParam{}, errors.Wrapf(err, "cannot get objects for collection: %v", collectionAlias)
-		}
+		for _, objectId := range collectionAlias.Ids {
 
-		for _, objectPb := range ObjectsPb.Objects {
+			objectPb, err := d.ClientStorageHandlerHandler.GetObjectById(ctx, objectId)
+			if err != nil {
+				return &pb.NoParam{}, errors.Wrapf(err, "cannot GetObjectById: %v", err)
+			}
 
 			currentStorageLocationsPb, err := d.ClientStorageHandlerHandler.GetStorageLocationsByObjectId(ctx, &pb.Id{Id: objectPb.Id})
 			if err != nil {
