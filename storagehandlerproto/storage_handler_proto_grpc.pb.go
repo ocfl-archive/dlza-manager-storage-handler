@@ -115,8 +115,8 @@ var ClerkStorageHandlerService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	DispatcherStorageHandlerService_Ping_FullMethodName                        = "/storagehandlerproto.DispatcherStorageHandlerService/Ping"
-	DispatcherStorageHandlerService_ChangeQualityForCollections_FullMethodName = "/storagehandlerproto.DispatcherStorageHandlerService/ChangeQualityForCollections"
+	DispatcherStorageHandlerService_Ping_FullMethodName                                    = "/storagehandlerproto.DispatcherStorageHandlerService/Ping"
+	DispatcherStorageHandlerService_ChangeQualityForCollectionWithObjectIds_FullMethodName = "/storagehandlerproto.DispatcherStorageHandlerService/ChangeQualityForCollectionWithObjectIds"
 )
 
 // DispatcherStorageHandlerServiceClient is the client API for DispatcherStorageHandlerService service.
@@ -124,7 +124,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DispatcherStorageHandlerServiceClient interface {
 	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*proto.DefaultResponse, error)
-	ChangeQualityForCollections(ctx context.Context, in *dlzamanagerproto.CollectionAliases, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error)
+	ChangeQualityForCollectionWithObjectIds(ctx context.Context, in *dlzamanagerproto.CollectionAliases, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error)
 }
 
 type dispatcherStorageHandlerServiceClient struct {
@@ -144,9 +144,9 @@ func (c *dispatcherStorageHandlerServiceClient) Ping(ctx context.Context, in *em
 	return out, nil
 }
 
-func (c *dispatcherStorageHandlerServiceClient) ChangeQualityForCollections(ctx context.Context, in *dlzamanagerproto.CollectionAliases, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error) {
+func (c *dispatcherStorageHandlerServiceClient) ChangeQualityForCollectionWithObjectIds(ctx context.Context, in *dlzamanagerproto.CollectionAliases, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error) {
 	out := new(dlzamanagerproto.NoParam)
-	err := c.cc.Invoke(ctx, DispatcherStorageHandlerService_ChangeQualityForCollections_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, DispatcherStorageHandlerService_ChangeQualityForCollectionWithObjectIds_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (c *dispatcherStorageHandlerServiceClient) ChangeQualityForCollections(ctx 
 // for forward compatibility
 type DispatcherStorageHandlerServiceServer interface {
 	Ping(context.Context, *emptypb.Empty) (*proto.DefaultResponse, error)
-	ChangeQualityForCollections(context.Context, *dlzamanagerproto.CollectionAliases) (*dlzamanagerproto.NoParam, error)
+	ChangeQualityForCollectionWithObjectIds(context.Context, *dlzamanagerproto.CollectionAliases) (*dlzamanagerproto.NoParam, error)
 	mustEmbedUnimplementedDispatcherStorageHandlerServiceServer()
 }
 
@@ -169,8 +169,8 @@ type UnimplementedDispatcherStorageHandlerServiceServer struct {
 func (UnimplementedDispatcherStorageHandlerServiceServer) Ping(context.Context, *emptypb.Empty) (*proto.DefaultResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
-func (UnimplementedDispatcherStorageHandlerServiceServer) ChangeQualityForCollections(context.Context, *dlzamanagerproto.CollectionAliases) (*dlzamanagerproto.NoParam, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ChangeQualityForCollections not implemented")
+func (UnimplementedDispatcherStorageHandlerServiceServer) ChangeQualityForCollectionWithObjectIds(context.Context, *dlzamanagerproto.CollectionAliases) (*dlzamanagerproto.NoParam, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ChangeQualityForCollectionWithObjectIds not implemented")
 }
 func (UnimplementedDispatcherStorageHandlerServiceServer) mustEmbedUnimplementedDispatcherStorageHandlerServiceServer() {
 }
@@ -204,20 +204,20 @@ func _DispatcherStorageHandlerService_Ping_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DispatcherStorageHandlerService_ChangeQualityForCollections_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _DispatcherStorageHandlerService_ChangeQualityForCollectionWithObjectIds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(dlzamanagerproto.CollectionAliases)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DispatcherStorageHandlerServiceServer).ChangeQualityForCollections(ctx, in)
+		return srv.(DispatcherStorageHandlerServiceServer).ChangeQualityForCollectionWithObjectIds(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: DispatcherStorageHandlerService_ChangeQualityForCollections_FullMethodName,
+		FullMethod: DispatcherStorageHandlerService_ChangeQualityForCollectionWithObjectIds_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DispatcherStorageHandlerServiceServer).ChangeQualityForCollections(ctx, req.(*dlzamanagerproto.CollectionAliases))
+		return srv.(DispatcherStorageHandlerServiceServer).ChangeQualityForCollectionWithObjectIds(ctx, req.(*dlzamanagerproto.CollectionAliases))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -234,8 +234,8 @@ var DispatcherStorageHandlerService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _DispatcherStorageHandlerService_Ping_Handler,
 		},
 		{
-			MethodName: "ChangeQualityForCollections",
-			Handler:    _DispatcherStorageHandlerService_ChangeQualityForCollections_Handler,
+			MethodName: "ChangeQualityForCollectionWithObjectIds",
+			Handler:    _DispatcherStorageHandlerService_ChangeQualityForCollectionWithObjectIds_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
