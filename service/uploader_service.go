@@ -74,8 +74,10 @@ func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson strin
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot unmarshal object: %v", objectJson)
 	}
+	fileObjects, head, versions, err := extractMetadata(tusePath, confObj, *u.Logger)
+	object.Head = head
+	object.Versions = versions
 	objectPb := mapper.ConvertToObjectPb(object)
-	fileObjects, err := extractMetadata(tusePath, confObj, *u.Logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot ExtractMetadata for: %v", tusePath)
 	}
@@ -83,11 +85,11 @@ func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson strin
 	return objectAndFiles, nil
 }
 
-func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLogger) ([]*pb.File, error) {
+func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLogger) ([]*pb.File, string, string, error) {
 	daLogger := zLogger.NewZWrapper(logger)
 	fsFactory, err := writefs.NewFactory()
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot create filesystem factory")
+		return nil, "", "", errors.Wrap(err, "cannot create filesystem factory")
 	}
 	// arn:cache:s3:zurich:trallala
 	if err := fsFactory.Register(s3fsrw.NewCreateFSFunc(map[string]*s3fsrw.S3Access{
@@ -98,10 +100,10 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 			UseSSL:    true,
 		},
 	}, s3fsrw.ARNRegexStr, false, nil, daLogger), "^arn:", writefs.LowFS); err != nil {
-		return nil, errors.Wrap(err, "cannot register zipfs")
+		return nil, "", "", errors.Wrap(err, "cannot register zipfs")
 	}
 	if err := fsFactory.Register(zipfs.NewCreateFSFunc(), "([0-9a-f]{32}|\\.zip)$", writefs.HighFS); err != nil {
-		return nil, errors.Wrap(err, "cannot register zipfs")
+		return nil, "", "", errors.Wrap(err, "cannot register zipfs")
 	}
 	/*
 		if err := fsFactory.Register(osfsrw.NewCreateFSFunc(), "", writefs.LowFS); err != nil {
@@ -114,7 +116,7 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 	if err != nil {
 		daLogger.Errorf("cannot get filesystem for file '%s': %v", tusFileName, err)
 		daLogger.Debugf("%v%+v", err, ocfl.GetErrorStacktrace(err))
-		return nil, err
+		return nil, "", "", err
 	}
 	defer func() {
 		if err := writefs.Close(ocflFS); err != nil {
@@ -132,7 +134,7 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 		nil,
 		logger)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot instantiate extension factory")
+		return nil, "", "", errors.Wrap(err, "cannot instantiate extension factory")
 	}
 
 	ctx := ocfl.NewContextValidation(context.TODO())
@@ -140,14 +142,14 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 	if err != nil {
 		daLogger.Errorf("cannot open storage root: %v", err)
 		daLogger.Debugf("%v%+v", err, ocfl.GetErrorStacktrace(err))
-		return nil, err
+		return nil, "", "", err
 	}
 	metadata, err := storageRoot.ExtractMeta("", "")
 	if err != nil {
 		fmt.Printf("cannot extract metadata from storage root: %v\n", err)
 		daLogger.Errorf("cannot extract metadata from storage root: %v\n", err)
 		daLogger.Debugf("%v%+v", err, ocfl.GetErrorStacktrace(err))
-		return nil, err
+		return nil, "", "", err
 	}
 
 	object := &ocfl.ObjectMetadata{}
@@ -156,6 +158,14 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 	}
 	filesRetrieved := object.Files
 	head := object.Head
+	versionsMap := object.Versions
+	versionsJson, err := json.Marshal(versionsMap)
+	if err != nil {
+		fmt.Printf("cannot marshal versions to Json from storage root: %v\n", err)
+		daLogger.Errorf("cannot marshal versions to Json from storage root: %v\n", err)
+		daLogger.Debugf("%v%+v", err, ocfl.GetErrorStacktrace(err))
+		return nil, "", "", err
+	}
 
 	files := make([]*pb.File, 0)
 	for index, fileRetr := range filesRetrieved {
@@ -186,5 +196,5 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 		}
 		files = append(files, &file)
 	}
-	return files, nil
+	return files, head, string(versionsJson), nil
 }
