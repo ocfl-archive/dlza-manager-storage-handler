@@ -7,16 +7,19 @@ import (
 	"io"
 )
 
+const maxMsgSize = 1024 * 1024 * 12
+
 func NewStorageHandlerClerkClient(target string, opt grpc.DialOption) (pb.ClerkStorageHandlerServiceClient, io.Closer, error) {
-	connection, err := grpc.Dial(target, opt)
+	connection, err := grpc.NewClient(target, opt, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize), grpc.MaxCallSendMsgSize(maxMsgSize)))
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
+
 	return pb.NewClerkStorageHandlerServiceClient(connection), connection, nil
 }
 
 func NewUploaderStorageHandlerClient(target string, opt grpc.DialOption) (pb.UploaderStorageHandlerServiceClient, io.Closer, error) {
-	connection, err := grpc.Dial(target, opt)
+	connection, err := grpc.NewClient(target, opt, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize), grpc.MaxCallSendMsgSize(maxMsgSize)))
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
@@ -24,7 +27,7 @@ func NewUploaderStorageHandlerClient(target string, opt grpc.DialOption) (pb.Upl
 }
 
 func NewDispatcherStorageHandlerClient(target string, opt grpc.DialOption) (pb.DispatcherStorageHandlerServiceClient, io.Closer, error) {
-	connection, err := grpc.Dial(target, opt)
+	connection, err := grpc.NewClient(target, opt, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize), grpc.MaxCallSendMsgSize(maxMsgSize)))
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}

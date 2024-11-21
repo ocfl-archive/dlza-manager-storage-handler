@@ -1,20 +1,20 @@
 handler:
   host : localhost
-  port : 12345
+  port : 9082
 storage-handler:
   host : localhost
-  port : 123456
-clerk: 
+  port : 9083
+clerk:
   host : localhost
-  port : 1234567
+  port : 9086
 s3-temp-storage:
   type: s3
-  name: name
-  key: your_key
-  bucket: your_bucket
-  api-url-value: https://your-api-url-value.ch
-  url: your-api-url-value.ch
-  upload-folder: vfs:/your_upload_folder
+  name: temp_switch_ch
+  key: AKIAFEDBDB2704C24D21
+  bucket: ub-test_dlza-temporary
+  api-url-value: https://vip-ecs-ub.storage.p.unibas.ch
+  url: vip-ecs-ub.storage.p.unibas.ch
+  upload-folder: vfs:/temp_switch_ch
   capem: "ignore"
   debug: false
 
