@@ -8,7 +8,7 @@ require (
 	github.com/BurntSushi/toml v1.4.0
 	github.com/aws/aws-sdk-go-v2/config v1.28.5
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.46
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.67.1
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.68.0
 	github.com/aws/smithy-go v1.22.1
 	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-gonic/gin v1.10.0
@@ -17,7 +17,7 @@ require (
 	github.com/je4/trustutil/v2 v2.0.28
 	github.com/je4/utils/v2 v2.0.53
 	github.com/ocfl-archive/dlza-manager v0.0.11
-	github.com/ocfl-archive/dlza-manager-handler v0.0.10
+	github.com/ocfl-archive/dlza-manager-handler v0.0.11
 	github.com/ocfl-archive/gocfl/v2 v2.0.6-beta2
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
@@ -67,7 +67,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.6 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.7 // indirect
 	github.com/gin-contrib/multitemplate v1.0.1 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
@@ -151,7 +151,7 @@ require (
 	github.com/ugorji/go/codec v1.2.12 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.step.sm/crypto v0.54.2 // indirect
-	go.ub.unibas.ch/cloud/minivault/v2 v2.0.11 // indirect
+	go.ub.unibas.ch/cloud/minivault/v2 v2.0.13 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/arch v0.12.0 // indirect
 	golang.org/x/crypto v0.29.0 // indirect
