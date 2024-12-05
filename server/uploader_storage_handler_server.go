@@ -2,13 +2,14 @@ package server
 
 import (
 	"context"
+	"emperror.dev/errors"
 	zw "github.com/je4/utils/v2/pkg/zLogger"
 	pbHandler "github.com/ocfl-archive/dlza-manager-handler/handlerproto"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/config"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/service"
 	storageHandlerPb "github.com/ocfl-archive/dlza-manager-storage-handler/storagehandlerproto"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
-	"github.com/pkg/errors"
+	"io"
 )
 
 type UploaderStorageHandlerServer struct {
@@ -18,22 +19,33 @@ type UploaderStorageHandlerServer struct {
 	Logger                      zw.ZWrapper
 }
 
-func (u *UploaderStorageHandlerServer) CopyFile(ctx context.Context, incomingOrder *pb.IncomingOrder) (*pb.Status, error) {
-	_, err := u.ClientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: incomingOrder.StatusId, Status: "archiving"})
-	if err != nil {
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot set status to copy file for collection '%s'", incomingOrder.CollectionAlias)
+func (u *UploaderStorageHandlerServer) CopyFileStream(stream storageHandlerPb.UploaderStorageHandlerService_CopyFileStreamServer) error {
+	var objectAndFiles []*pb.ObjectAndFile
+	for {
+		file, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		objectAndFiles = append(objectAndFiles, file)
 	}
-	status, err := service.CopyFiles(u.ClientStorageHandlerHandler, ctx, incomingOrder, u.ConfigObj, u.Logger)
+	_, err := u.ClientStorageHandlerHandler.AlterStatus(context.Background(), &pb.StatusObject{Id: objectAndFiles[0].StatusId, Status: "archiving"})
 	if err != nil {
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot copy file for collection '%s'", incomingOrder.CollectionAlias)
+		return errors.Wrapf(err, "cannot set status to copy file for collection '%s'", objectAndFiles[0].CollectionAlias)
 	}
-	_, err = u.ClientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: incomingOrder.StatusId, Status: "archived"})
+	_, err = service.CopyFiles(u.ClientStorageHandlerHandler, context.Background(), objectAndFiles, u.ConfigObj, u.Logger)
 	if err != nil {
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot set status to copy file for collection '%s'", incomingOrder.CollectionAlias)
+		return errors.Wrapf(err, "cannot copy file for collection '%s'", objectAndFiles[0].CollectionAlias)
 	}
-	_, err = service.DeleteTemporaryFiles(incomingOrder, u.ConfigObj, u.Logger)
+	_, err = u.ClientStorageHandlerHandler.AlterStatus(context.Background(), &pb.StatusObject{Id: objectAndFiles[0].StatusId, Status: "archived"})
 	if err != nil {
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot delete temporary files for collection '%s'", incomingOrder.CollectionAlias)
+		return errors.Wrapf(err, "cannot set status to copy file for collection '%s'", objectAndFiles[0].CollectionAlias)
 	}
-	return status, nil
+	_, err = service.DeleteTemporaryFiles(objectAndFiles[0], u.ConfigObj, u.Logger)
+	if err != nil {
+		return errors.Wrapf(err, "cannot delete temporary files for collection '%s'", objectAndFiles[0].CollectionAlias)
+	}
+	return nil
 }

@@ -7,8 +7,8 @@ require (
 	github.com/je4/filesystem/v2 v2.0.15
 	github.com/je4/utils/v2 v2.0.52
 	github.com/jinzhu/configor v1.2.2
-	github.com/ocfl-archive/dlza-manager v0.0.10
-	github.com/ocfl-archive/dlza-manager-handler v0.0.10
+	github.com/ocfl-archive/dlza-manager v0.0.14
+	github.com/ocfl-archive/dlza-manager-handler v0.0.13
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.33.0
 	google.golang.org/grpc v1.68.0

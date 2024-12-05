@@ -22,14 +22,14 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	UploaderStorageHandlerService_CopyFile_FullMethodName = "/storagehandlerproto.UploaderStorageHandlerService/CopyFile"
+	UploaderStorageHandlerService_CopyFileStream_FullMethodName = "/storagehandlerproto.UploaderStorageHandlerService/CopyFileStream"
 )
 
 // UploaderStorageHandlerServiceClient is the client API for UploaderStorageHandlerService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UploaderStorageHandlerServiceClient interface {
-	CopyFile(ctx context.Context, in *dlzamanagerproto.IncomingOrder, opts ...grpc.CallOption) (*dlzamanagerproto.Status, error)
+	CopyFileStream(ctx context.Context, opts ...grpc.CallOption) (UploaderStorageHandlerService_CopyFileStreamClient, error)
 }
 
 type uploaderStorageHandlerServiceClient struct {
@@ -40,20 +40,45 @@ func NewUploaderStorageHandlerServiceClient(cc grpc.ClientConnInterface) Uploade
 	return &uploaderStorageHandlerServiceClient{cc}
 }
 
-func (c *uploaderStorageHandlerServiceClient) CopyFile(ctx context.Context, in *dlzamanagerproto.IncomingOrder, opts ...grpc.CallOption) (*dlzamanagerproto.Status, error) {
-	out := new(dlzamanagerproto.Status)
-	err := c.cc.Invoke(ctx, UploaderStorageHandlerService_CopyFile_FullMethodName, in, out, opts...)
+func (c *uploaderStorageHandlerServiceClient) CopyFileStream(ctx context.Context, opts ...grpc.CallOption) (UploaderStorageHandlerService_CopyFileStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &UploaderStorageHandlerService_ServiceDesc.Streams[0], UploaderStorageHandlerService_CopyFileStream_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &uploaderStorageHandlerServiceCopyFileStreamClient{stream}
+	return x, nil
+}
+
+type UploaderStorageHandlerService_CopyFileStreamClient interface {
+	Send(*dlzamanagerproto.ObjectAndFile) error
+	CloseAndRecv() (*dlzamanagerproto.Status, error)
+	grpc.ClientStream
+}
+
+type uploaderStorageHandlerServiceCopyFileStreamClient struct {
+	grpc.ClientStream
+}
+
+func (x *uploaderStorageHandlerServiceCopyFileStreamClient) Send(m *dlzamanagerproto.ObjectAndFile) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *uploaderStorageHandlerServiceCopyFileStreamClient) CloseAndRecv() (*dlzamanagerproto.Status, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(dlzamanagerproto.Status)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // UploaderStorageHandlerServiceServer is the server API for UploaderStorageHandlerService service.
 // All implementations must embed UnimplementedUploaderStorageHandlerServiceServer
 // for forward compatibility
 type UploaderStorageHandlerServiceServer interface {
-	CopyFile(context.Context, *dlzamanagerproto.IncomingOrder) (*dlzamanagerproto.Status, error)
+	CopyFileStream(UploaderStorageHandlerService_CopyFileStreamServer) error
 	mustEmbedUnimplementedUploaderStorageHandlerServiceServer()
 }
 
@@ -61,8 +86,8 @@ type UploaderStorageHandlerServiceServer interface {
 type UnimplementedUploaderStorageHandlerServiceServer struct {
 }
 
-func (UnimplementedUploaderStorageHandlerServiceServer) CopyFile(context.Context, *dlzamanagerproto.IncomingOrder) (*dlzamanagerproto.Status, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CopyFile not implemented")
+func (UnimplementedUploaderStorageHandlerServiceServer) CopyFileStream(UploaderStorageHandlerService_CopyFileStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method CopyFileStream not implemented")
 }
 func (UnimplementedUploaderStorageHandlerServiceServer) mustEmbedUnimplementedUploaderStorageHandlerServiceServer() {
 }
@@ -78,22 +103,30 @@ func RegisterUploaderStorageHandlerServiceServer(s grpc.ServiceRegistrar, srv Up
 	s.RegisterService(&UploaderStorageHandlerService_ServiceDesc, srv)
 }
 
-func _UploaderStorageHandlerService_CopyFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(dlzamanagerproto.IncomingOrder)
-	if err := dec(in); err != nil {
+func _UploaderStorageHandlerService_CopyFileStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(UploaderStorageHandlerServiceServer).CopyFileStream(&uploaderStorageHandlerServiceCopyFileStreamServer{stream})
+}
+
+type UploaderStorageHandlerService_CopyFileStreamServer interface {
+	SendAndClose(*dlzamanagerproto.Status) error
+	Recv() (*dlzamanagerproto.ObjectAndFile, error)
+	grpc.ServerStream
+}
+
+type uploaderStorageHandlerServiceCopyFileStreamServer struct {
+	grpc.ServerStream
+}
+
+func (x *uploaderStorageHandlerServiceCopyFileStreamServer) SendAndClose(m *dlzamanagerproto.Status) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *uploaderStorageHandlerServiceCopyFileStreamServer) Recv() (*dlzamanagerproto.ObjectAndFile, error) {
+	m := new(dlzamanagerproto.ObjectAndFile)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	if interceptor == nil {
-		return srv.(UploaderStorageHandlerServiceServer).CopyFile(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: UploaderStorageHandlerService_CopyFile_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UploaderStorageHandlerServiceServer).CopyFile(ctx, req.(*dlzamanagerproto.IncomingOrder))
-	}
-	return interceptor(ctx, in, info, handler)
+	return m, nil
 }
 
 // UploaderStorageHandlerService_ServiceDesc is the grpc.ServiceDesc for UploaderStorageHandlerService service.
@@ -102,13 +135,14 @@ func _UploaderStorageHandlerService_CopyFile_Handler(srv interface{}, ctx contex
 var UploaderStorageHandlerService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "storagehandlerproto.UploaderStorageHandlerService",
 	HandlerType: (*UploaderStorageHandlerServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "CopyFile",
-			Handler:    _UploaderStorageHandlerService_CopyFile_Handler,
+			StreamName:    "CopyFileStream",
+			Handler:       _UploaderStorageHandlerService_CopyFileStream_Handler,
+			ClientStreams: true,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "storage_handler_proto.proto",
 }
 

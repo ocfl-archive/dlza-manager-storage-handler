@@ -17,12 +17,12 @@ import (
 	"maps"
 )
 
-func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServiceClient, ctx context.Context, objectWithCollectionAliasAndPath *pb.IncomingOrder, cfg config.Config, daLogger zw.ZWrapper) (*pb.Status, error) {
+func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServiceClient, ctx context.Context, objectWithCollectionAliasAndPathAndFiles []*pb.ObjectAndFile, cfg config.Config, daLogger zw.ZWrapper) (*pb.Status, error) {
 
-	storageLocations, err := clientStorageHandlerHandler.GetStorageLocationsByCollectionAlias(ctx, &pb.CollectionAlias{CollectionAlias: objectWithCollectionAliasAndPath.CollectionAlias})
+	storageLocations, err := clientStorageHandlerHandler.GetStorageLocationsByCollectionAlias(ctx, &pb.CollectionAlias{CollectionAlias: objectWithCollectionAliasAndPathAndFiles[0].CollectionAlias})
 
 	if err != nil {
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot get storageLocations for collection: %v", objectWithCollectionAliasAndPath.CollectionAlias)
+		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot get storageLocations for collection: %v", objectWithCollectionAliasAndPathAndFiles[0].CollectionAlias)
 	}
 	configObj, err := models.LoadStorageHandlerConfig(storageLocations.StorageLocations)
 	if err != nil {
@@ -47,7 +47,7 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 		}
 	}
 
-	storagePartition, err := clientStorageHandlerHandler.GetStoragePartitionForLocation(ctx, &pb.SizeAndId{Size: objectWithCollectionAliasAndPath.ObjectAndFiles.Object.Size, Id: storageLocation.Id})
+	storagePartition, err := clientStorageHandlerHandler.GetStoragePartitionForLocation(ctx, &pb.SizeAndId{Size: objectWithCollectionAliasAndPathAndFiles[0].Object.Size, Id: storageLocation.Id})
 	if err != nil {
 		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot get storagePartition for storageLocation: %v", storageLocation.Alias)
 	}
@@ -58,23 +58,40 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 		return &pb.Status{Ok: false}, errors.Wrapf(err, "error mapping storageLocation json for storageLocation ID: %v", storageLocation.Id)
 	}
 
-	path := connection.Folder + storagePartition.Alias + "/" + objectWithCollectionAliasAndPath.FileName
+	path := connection.Folder + storagePartition.Alias + "/" + objectWithCollectionAliasAndPathAndFiles[0].FileName
 
-	objectInstance := &pb.ObjectInstance{Path: path, Status: "new", StoragePartitionId: storagePartition.Id, Size: objectWithCollectionAliasAndPath.ObjectAndFiles.Object.Size}
-	storagePartition.CurrentSize += objectWithCollectionAliasAndPath.ObjectAndFiles.Object.Size
+	objectInstance := &pb.ObjectInstance{Path: path, Status: "new", StoragePartitionId: storagePartition.Id, Size: objectWithCollectionAliasAndPathAndFiles[0].Object.Size}
+	storagePartition.CurrentSize += objectWithCollectionAliasAndPathAndFiles[0].Object.Size
 	storagePartition.CurrentObjects++
 
-	_, err = clientStorageHandlerHandler.SaveAllTableObjectsAfterCopying(ctx, &pb.InstanceWithPartitionAndObjectWithFiles{StoragePartition: storagePartition, ObjectInstance: objectInstance, ObjectAndFiles: objectWithCollectionAliasAndPath.ObjectAndFiles})
-	if err != nil {
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot SaveAllTableObjectsAfterCopying for collection with alias: %v and path: %v", objectWithCollectionAliasAndPath.CollectionAlias, path)
-	}
+	stream, err := clientStorageHandlerHandler.SaveAllTableObjectsAfterCopyingStream(ctx)
 
+	if err != nil {
+		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot SaveAllTableObjectsAfterCopying for collection with alias: %v and path: %v", objectWithCollectionAliasAndPathAndFiles[0].CollectionAlias, path)
+	}
+	for i, objectAndFile := range objectWithCollectionAliasAndPathAndFiles {
+		instanceWithPartitionAndObjectWithFile := &pb.InstanceWithPartitionAndObjectWithFile{}
+		if i == 0 {
+			instanceWithPartitionAndObjectWithFile.Object = objectWithCollectionAliasAndPathAndFiles[i].Object
+			instanceWithPartitionAndObjectWithFile.StoragePartition = storagePartition
+			instanceWithPartitionAndObjectWithFile.ObjectInstance = objectInstance
+			instanceWithPartitionAndObjectWithFile.CollectionAlias = objectWithCollectionAliasAndPathAndFiles[i].CollectionAlias
+		}
+		instanceWithPartitionAndObjectWithFile.File = objectAndFile.File
+		if err := stream.Send(instanceWithPartitionAndObjectWithFile); err != nil {
+			return &pb.Status{Ok: false}, errors.Wrapf(err, "Could store all table objects for collection: %v", objectWithCollectionAliasAndPathAndFiles[0].CollectionAlias)
+		}
+	}
+	_, err = stream.CloseAndRecv()
+	if err != nil && err != io.EOF {
+		return &pb.Status{Ok: false}, errors.Wrapf(err, "Could store all table objects: %v, CloseAndRecv failed", objectWithCollectionAliasAndPathAndFiles[0].CollectionAlias)
+	}
 	err = func() error {
 
-		sourceFP, err := vfs.Open(objectWithCollectionAliasAndPath.FilePath)
+		sourceFP, err := vfs.Open(objectWithCollectionAliasAndPathAndFiles[0].FilePath)
 		if err != nil {
-			daLogger.Errorf("cannot read file '%s': %v", objectWithCollectionAliasAndPath.FilePath, err)
-			return errors.Wrapf(err, "cannot read file '%s': %v", objectWithCollectionAliasAndPath.FilePath, err)
+			daLogger.Errorf("cannot read file '%s': %v", objectWithCollectionAliasAndPathAndFiles[0].FilePath, err)
+			return errors.Wrapf(err, "cannot read file '%s': %v", objectWithCollectionAliasAndPathAndFiles[0].FilePath, err)
 		}
 		defer func() {
 			if err := sourceFP.Close(); err != nil {
@@ -106,14 +123,14 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 				daLogger.Errorf("cannot close checksum writer: %v", err)
 				return errors.Wrapf(err, "cannot close checksum writer: %v", err)
 			}
-			return errors.Wrapf(err, "error writing file: %v", objectWithCollectionAliasAndPath.FilePath)
+			return errors.Wrapf(err, "error writing file: %v", objectWithCollectionAliasAndPathAndFiles[0].FilePath)
 		}
-		if _size != objectWithCollectionAliasAndPath.ObjectAndFiles.Object.Size {
+		if _size != objectWithCollectionAliasAndPathAndFiles[0].Object.Size {
 			if err := csWriter.Close(); err != nil {
 				daLogger.Errorf("cannot close checksum writer: %v", err)
 				return errors.Wrapf(err, "cannot close checksum writer: %v", err)
 			}
-			return errors.Wrapf(err, "size should be the same: '%v' != %v", _size, objectWithCollectionAliasAndPath.ObjectAndFiles.Object.Size)
+			return errors.Wrapf(err, "size should be the same: '%v' != %v", _size, objectWithCollectionAliasAndPathAndFiles[0].Object.Size)
 		}
 
 		if err := csWriter.Close(); err != nil {
@@ -134,15 +151,15 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 		return &pb.Status{Ok: false}, err
 	}
 
-	_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: objectWithCollectionAliasAndPath.StatusId, Status: "zip was copied"})
+	_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: objectWithCollectionAliasAndPathAndFiles[0].StatusId, Status: "zip was copied"})
 	if err != nil {
-		daLogger.Warningf("could not AlterStatus with status id %s:  to zip was copied", objectWithCollectionAliasAndPath.StatusId)
+		daLogger.Warningf("could not AlterStatus with status id %s:  to zip was copied", objectWithCollectionAliasAndPathAndFiles[0].StatusId)
 	}
 
 	return &pb.Status{Ok: true}, nil
 }
 
-func DeleteTemporaryFiles(objectWithCollectionAliasAndPath *pb.IncomingOrder, cfg config.Config, daLogger zw.ZWrapper) (*pb.Status, error) {
+func DeleteTemporaryFiles(objectAndFile *pb.ObjectAndFile, cfg config.Config, daLogger zw.ZWrapper) (*pb.Status, error) {
 	tempVfsMap := getVfsTempMap(cfg)
 	vfs, err := vfsrw.NewFS(tempVfsMap, daLogger)
 	if err != nil {
@@ -150,16 +167,11 @@ func DeleteTemporaryFiles(objectWithCollectionAliasAndPath *pb.IncomingOrder, cf
 		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot create vfs: %v", err)
 	}
 
-	if err := writefs.Remove(vfs, objectWithCollectionAliasAndPath.FilePath); err != nil {
-		daLogger.Errorf("error deleting file to '%s': %v", objectWithCollectionAliasAndPath.FilePath, err)
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "error writing file to '%s': %v", objectWithCollectionAliasAndPath.FilePath, err)
+	if err := writefs.Remove(vfs, objectAndFile.FilePath); err != nil {
+		daLogger.Errorf("error deleting file to '%s': %v", objectAndFile.FilePath, err)
+		return &pb.Status{Ok: false}, errors.Wrapf(err, "error writing file to '%s': %v", objectAndFile.FilePath, err)
 	}
-	/*
-		if err := writefs.Remove(vfs, objectWithCollectionAliasAndPath.FilePath+".info"); err != nil {
-			daLogger.Errorf("error deleting file to '%s': %v", objectWithCollectionAliasAndPath.FilePath, err)
-			return &pb.Status{Ok: false}, errors.Wrapf(err, "error writing file to '%s': %v", objectWithCollectionAliasAndPath.FilePath, err)
-		}
-	*/
+
 	return &pb.Status{Ok: true}, nil
 }
 

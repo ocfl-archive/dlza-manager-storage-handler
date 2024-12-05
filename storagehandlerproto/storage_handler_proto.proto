@@ -14,7 +14,7 @@ package storagehandlerproto;
 import "dlza_proto.proto";
 
 service UploaderStorageHandlerService {
-  rpc CopyFile(dlzamanagerproto.IncomingOrder) returns (dlzamanagerproto.Status) {};
+  rpc CopyFileStream(stream dlzamanagerproto.ObjectAndFile) returns (dlzamanagerproto.Status) {};
 }
 
 service UploaderHandlerService {
