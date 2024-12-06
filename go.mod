@@ -16,8 +16,8 @@ require (
 	github.com/je4/indexer/v3 v3.0.7
 	github.com/je4/trustutil/v2 v2.0.28
 	github.com/je4/utils/v2 v2.0.56
-	github.com/ocfl-archive/dlza-manager v0.0.11
-	github.com/ocfl-archive/dlza-manager-handler v0.0.12
+	github.com/ocfl-archive/dlza-manager v0.0.14
+	github.com/ocfl-archive/dlza-manager-handler v0.0.13
 	github.com/ocfl-archive/gocfl/v2 v2.0.6-beta3
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
