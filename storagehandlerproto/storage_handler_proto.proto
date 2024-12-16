@@ -23,3 +23,8 @@ service DispatcherStorageHandlerService {
   rpc Ping(google.protobuf.Empty) returns (genericproto.DefaultResponse) {}
   rpc ChangeQualityForCollectionWithObjectIds(dlzamanagerproto.CollectionAliases) returns (dlzamanagerproto.NoParam) {};
 }
+
+service CheckerStorageHandlerService {
+  rpc Ping(google.protobuf.Empty) returns (genericproto.DefaultResponse) {}
+  rpc GetObjectInstanceChecksum(dlzamanagerproto.Id) returns (dlzamanagerproto.Id) {};
+}

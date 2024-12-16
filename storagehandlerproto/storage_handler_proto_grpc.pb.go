@@ -241,3 +241,131 @@ var DispatcherStorageHandlerService_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "storage_handler_proto.proto",
 }
+
+const (
+	CheckerStorageHandlerService_Ping_FullMethodName                      = "/storagehandlerproto.CheckerStorageHandlerService/Ping"
+	CheckerStorageHandlerService_GetObjectInstanceChecksum_FullMethodName = "/storagehandlerproto.CheckerStorageHandlerService/GetObjectInstanceChecksum"
+)
+
+// CheckerStorageHandlerServiceClient is the client API for CheckerStorageHandlerService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type CheckerStorageHandlerServiceClient interface {
+	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*proto.DefaultResponse, error)
+	GetObjectInstanceChecksum(ctx context.Context, in *dlzamanagerproto.Id, opts ...grpc.CallOption) (*dlzamanagerproto.Id, error)
+}
+
+type checkerStorageHandlerServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewCheckerStorageHandlerServiceClient(cc grpc.ClientConnInterface) CheckerStorageHandlerServiceClient {
+	return &checkerStorageHandlerServiceClient{cc}
+}
+
+func (c *checkerStorageHandlerServiceClient) Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*proto.DefaultResponse, error) {
+	out := new(proto.DefaultResponse)
+	err := c.cc.Invoke(ctx, CheckerStorageHandlerService_Ping_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *checkerStorageHandlerServiceClient) GetObjectInstanceChecksum(ctx context.Context, in *dlzamanagerproto.Id, opts ...grpc.CallOption) (*dlzamanagerproto.Id, error) {
+	out := new(dlzamanagerproto.Id)
+	err := c.cc.Invoke(ctx, CheckerStorageHandlerService_GetObjectInstanceChecksum_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// CheckerStorageHandlerServiceServer is the server API for CheckerStorageHandlerService service.
+// All implementations must embed UnimplementedCheckerStorageHandlerServiceServer
+// for forward compatibility
+type CheckerStorageHandlerServiceServer interface {
+	Ping(context.Context, *emptypb.Empty) (*proto.DefaultResponse, error)
+	GetObjectInstanceChecksum(context.Context, *dlzamanagerproto.Id) (*dlzamanagerproto.Id, error)
+	mustEmbedUnimplementedCheckerStorageHandlerServiceServer()
+}
+
+// UnimplementedCheckerStorageHandlerServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedCheckerStorageHandlerServiceServer struct {
+}
+
+func (UnimplementedCheckerStorageHandlerServiceServer) Ping(context.Context, *emptypb.Empty) (*proto.DefaultResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+}
+func (UnimplementedCheckerStorageHandlerServiceServer) GetObjectInstanceChecksum(context.Context, *dlzamanagerproto.Id) (*dlzamanagerproto.Id, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetObjectInstanceChecksum not implemented")
+}
+func (UnimplementedCheckerStorageHandlerServiceServer) mustEmbedUnimplementedCheckerStorageHandlerServiceServer() {
+}
+
+// UnsafeCheckerStorageHandlerServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to CheckerStorageHandlerServiceServer will
+// result in compilation errors.
+type UnsafeCheckerStorageHandlerServiceServer interface {
+	mustEmbedUnimplementedCheckerStorageHandlerServiceServer()
+}
+
+func RegisterCheckerStorageHandlerServiceServer(s grpc.ServiceRegistrar, srv CheckerStorageHandlerServiceServer) {
+	s.RegisterService(&CheckerStorageHandlerService_ServiceDesc, srv)
+}
+
+func _CheckerStorageHandlerService_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CheckerStorageHandlerServiceServer).Ping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CheckerStorageHandlerService_Ping_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CheckerStorageHandlerServiceServer).Ping(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CheckerStorageHandlerService_GetObjectInstanceChecksum_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(dlzamanagerproto.Id)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CheckerStorageHandlerServiceServer).GetObjectInstanceChecksum(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CheckerStorageHandlerService_GetObjectInstanceChecksum_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CheckerStorageHandlerServiceServer).GetObjectInstanceChecksum(ctx, req.(*dlzamanagerproto.Id))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// CheckerStorageHandlerService_ServiceDesc is the grpc.ServiceDesc for CheckerStorageHandlerService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var CheckerStorageHandlerService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "storagehandlerproto.CheckerStorageHandlerService",
+	HandlerType: (*CheckerStorageHandlerServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Ping",
+			Handler:    _CheckerStorageHandlerService_Ping_Handler,
+		},
+		{
+			MethodName: "GetObjectInstanceChecksum",
+			Handler:    _CheckerStorageHandlerService_GetObjectInstanceChecksum_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "storage_handler_proto.proto",
+}
