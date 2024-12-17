@@ -197,6 +197,7 @@ func main() {
 	resolver.DoPing(clientStorageHandlerHandler, logger)
 
 	storagehandlerproto.RegisterDispatcherStorageHandlerServiceServer(grpcServer, &server.DispatcherStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger})
+	storagehandlerproto.RegisterCheckerStorageHandlerServiceServer(grpcServer, &server.CheckerStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger})
 
 	uploaderService := service2.UploaderService{StorageHandlerHandlerServiceClient: clientStorageHandlerHandler, Logger: &logger, ConfigObj: *conf}
 	ctx := context.Background()

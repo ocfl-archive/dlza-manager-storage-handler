@@ -2,11 +2,14 @@ package config
 
 import (
 	"emperror.dev/errors"
+	"encoding/json"
 	"github.com/BurntSushi/toml"
+	"github.com/je4/filesystem/v2/pkg/vfsrw"
 	"github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/stashconfig"
 	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 	"io/fs"
+	"maps"
 	"os"
 )
 
@@ -47,6 +50,11 @@ type TusServer struct {
 	TLSKey  string `toml:"tlskey"`
 }
 
+type Connection struct {
+	Folder string
+	VFS    vfsrw.Config
+}
+
 func LoadConfig(fSys fs.FS, fp string, conf *Config) error {
 	if _, err := fs.Stat(fSys, fp); err != nil {
 		path, err := os.Getwd()
@@ -68,4 +76,15 @@ func LoadConfig(fSys fs.FS, fp string, conf *Config) error {
 		conf.S3TempStorage.Secret = os.Getenv("S3_SECRET")
 	}
 	return nil
+}
+
+func LoadVfsConfig(connectionString string) (vfsrw.Config, error) {
+	vfsMap := make(map[string]*vfsrw.VFS)
+	connection := Connection{}
+	err := json.Unmarshal([]byte(connectionString), &connection)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error mapping json for storage location connection field")
+	}
+	maps.Copy(vfsMap, connection.VFS)
+	return vfsMap, nil
 }

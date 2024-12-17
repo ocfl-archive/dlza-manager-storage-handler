@@ -252,7 +252,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CheckerStorageHandlerServiceClient interface {
 	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*proto.DefaultResponse, error)
-	GetObjectInstanceChecksum(ctx context.Context, in *dlzamanagerproto.Id, opts ...grpc.CallOption) (*dlzamanagerproto.Id, error)
+	GetObjectInstanceChecksum(ctx context.Context, in *dlzamanagerproto.ObjectInstance, opts ...grpc.CallOption) (*dlzamanagerproto.Id, error)
 }
 
 type checkerStorageHandlerServiceClient struct {
@@ -272,7 +272,7 @@ func (c *checkerStorageHandlerServiceClient) Ping(ctx context.Context, in *empty
 	return out, nil
 }
 
-func (c *checkerStorageHandlerServiceClient) GetObjectInstanceChecksum(ctx context.Context, in *dlzamanagerproto.Id, opts ...grpc.CallOption) (*dlzamanagerproto.Id, error) {
+func (c *checkerStorageHandlerServiceClient) GetObjectInstanceChecksum(ctx context.Context, in *dlzamanagerproto.ObjectInstance, opts ...grpc.CallOption) (*dlzamanagerproto.Id, error) {
 	out := new(dlzamanagerproto.Id)
 	err := c.cc.Invoke(ctx, CheckerStorageHandlerService_GetObjectInstanceChecksum_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -286,7 +286,7 @@ func (c *checkerStorageHandlerServiceClient) GetObjectInstanceChecksum(ctx conte
 // for forward compatibility
 type CheckerStorageHandlerServiceServer interface {
 	Ping(context.Context, *emptypb.Empty) (*proto.DefaultResponse, error)
-	GetObjectInstanceChecksum(context.Context, *dlzamanagerproto.Id) (*dlzamanagerproto.Id, error)
+	GetObjectInstanceChecksum(context.Context, *dlzamanagerproto.ObjectInstance) (*dlzamanagerproto.Id, error)
 	mustEmbedUnimplementedCheckerStorageHandlerServiceServer()
 }
 
@@ -297,7 +297,7 @@ type UnimplementedCheckerStorageHandlerServiceServer struct {
 func (UnimplementedCheckerStorageHandlerServiceServer) Ping(context.Context, *emptypb.Empty) (*proto.DefaultResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
-func (UnimplementedCheckerStorageHandlerServiceServer) GetObjectInstanceChecksum(context.Context, *dlzamanagerproto.Id) (*dlzamanagerproto.Id, error) {
+func (UnimplementedCheckerStorageHandlerServiceServer) GetObjectInstanceChecksum(context.Context, *dlzamanagerproto.ObjectInstance) (*dlzamanagerproto.Id, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetObjectInstanceChecksum not implemented")
 }
 func (UnimplementedCheckerStorageHandlerServiceServer) mustEmbedUnimplementedCheckerStorageHandlerServiceServer() {
@@ -333,7 +333,7 @@ func _CheckerStorageHandlerService_Ping_Handler(srv interface{}, ctx context.Con
 }
 
 func _CheckerStorageHandlerService_GetObjectInstanceChecksum_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(dlzamanagerproto.Id)
+	in := new(dlzamanagerproto.ObjectInstance)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -345,7 +345,7 @@ func _CheckerStorageHandlerService_GetObjectInstanceChecksum_Handler(srv interfa
 		FullMethod: CheckerStorageHandlerService_GetObjectInstanceChecksum_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CheckerStorageHandlerServiceServer).GetObjectInstanceChecksum(ctx, req.(*dlzamanagerproto.Id))
+		return srv.(CheckerStorageHandlerServiceServer).GetObjectInstanceChecksum(ctx, req.(*dlzamanagerproto.ObjectInstance))
 	}
 	return interceptor(ctx, in, info, handler)
 }
