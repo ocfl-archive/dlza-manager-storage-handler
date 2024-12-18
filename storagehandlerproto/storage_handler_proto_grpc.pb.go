@@ -245,6 +245,7 @@ var DispatcherStorageHandlerService_ServiceDesc = grpc.ServiceDesc{
 const (
 	CheckerStorageHandlerService_Ping_FullMethodName                      = "/storagehandlerproto.CheckerStorageHandlerService/Ping"
 	CheckerStorageHandlerService_GetObjectInstanceChecksum_FullMethodName = "/storagehandlerproto.CheckerStorageHandlerService/GetObjectInstanceChecksum"
+	CheckerStorageHandlerService_CopyArchiveTo_FullMethodName             = "/storagehandlerproto.CheckerStorageHandlerService/CopyArchiveTo"
 )
 
 // CheckerStorageHandlerServiceClient is the client API for CheckerStorageHandlerService service.
@@ -253,6 +254,7 @@ const (
 type CheckerStorageHandlerServiceClient interface {
 	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*proto.DefaultResponse, error)
 	GetObjectInstanceChecksum(ctx context.Context, in *dlzamanagerproto.ObjectInstance, opts ...grpc.CallOption) (*dlzamanagerproto.Id, error)
+	CopyArchiveTo(ctx context.Context, in *dlzamanagerproto.CopyFromTo, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error)
 }
 
 type checkerStorageHandlerServiceClient struct {
@@ -281,12 +283,22 @@ func (c *checkerStorageHandlerServiceClient) GetObjectInstanceChecksum(ctx conte
 	return out, nil
 }
 
+func (c *checkerStorageHandlerServiceClient) CopyArchiveTo(ctx context.Context, in *dlzamanagerproto.CopyFromTo, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error) {
+	out := new(dlzamanagerproto.NoParam)
+	err := c.cc.Invoke(ctx, CheckerStorageHandlerService_CopyArchiveTo_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CheckerStorageHandlerServiceServer is the server API for CheckerStorageHandlerService service.
 // All implementations must embed UnimplementedCheckerStorageHandlerServiceServer
 // for forward compatibility
 type CheckerStorageHandlerServiceServer interface {
 	Ping(context.Context, *emptypb.Empty) (*proto.DefaultResponse, error)
 	GetObjectInstanceChecksum(context.Context, *dlzamanagerproto.ObjectInstance) (*dlzamanagerproto.Id, error)
+	CopyArchiveTo(context.Context, *dlzamanagerproto.CopyFromTo) (*dlzamanagerproto.NoParam, error)
 	mustEmbedUnimplementedCheckerStorageHandlerServiceServer()
 }
 
@@ -299,6 +311,9 @@ func (UnimplementedCheckerStorageHandlerServiceServer) Ping(context.Context, *em
 }
 func (UnimplementedCheckerStorageHandlerServiceServer) GetObjectInstanceChecksum(context.Context, *dlzamanagerproto.ObjectInstance) (*dlzamanagerproto.Id, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetObjectInstanceChecksum not implemented")
+}
+func (UnimplementedCheckerStorageHandlerServiceServer) CopyArchiveTo(context.Context, *dlzamanagerproto.CopyFromTo) (*dlzamanagerproto.NoParam, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CopyArchiveTo not implemented")
 }
 func (UnimplementedCheckerStorageHandlerServiceServer) mustEmbedUnimplementedCheckerStorageHandlerServiceServer() {
 }
@@ -350,6 +365,24 @@ func _CheckerStorageHandlerService_GetObjectInstanceChecksum_Handler(srv interfa
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CheckerStorageHandlerService_CopyArchiveTo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(dlzamanagerproto.CopyFromTo)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CheckerStorageHandlerServiceServer).CopyArchiveTo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CheckerStorageHandlerService_CopyArchiveTo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CheckerStorageHandlerServiceServer).CopyArchiveTo(ctx, req.(*dlzamanagerproto.CopyFromTo))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CheckerStorageHandlerService_ServiceDesc is the grpc.ServiceDesc for CheckerStorageHandlerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -364,6 +397,10 @@ var CheckerStorageHandlerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetObjectInstanceChecksum",
 			Handler:    _CheckerStorageHandlerService_GetObjectInstanceChecksum_Handler,
+		},
+		{
+			MethodName: "CopyArchiveTo",
+			Handler:    _CheckerStorageHandlerService_CopyArchiveTo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

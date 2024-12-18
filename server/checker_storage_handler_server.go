@@ -3,14 +3,18 @@ package server
 import (
 	"context"
 	"emperror.dev/errors"
+	"encoding/json"
 	"github.com/je4/filesystem/v2/pkg/vfsrw"
+	"github.com/je4/filesystem/v2/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/checksum"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	handlerPb "github.com/ocfl-archive/dlza-manager-handler/handlerproto"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/config"
 	storageHandlerPb "github.com/ocfl-archive/dlza-manager-storage-handler/storagehandlerproto"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
+	"github.com/ocfl-archive/dlza-manager/models"
 	"io"
+	"path/filepath"
 )
 
 type CheckerStorageHandlerServer struct {
@@ -73,4 +77,89 @@ func (c *CheckerStorageHandlerServer) GetObjectInstanceChecksum(ctx context.Cont
 	}
 
 	return &pb.Id{Id: checksums[checksum.DigestSHA512]}, nil
+}
+
+func (c *CheckerStorageHandlerServer) CopyArchiveTo(ctx context.Context, copyFromTo *pb.CopyFromTo) (*pb.NoParam, error) {
+	storagePartition, err := c.ClientStorageHandlerHandler.GetStoragePartitionForLocation(ctx, &pb.SizeAndId{Size: copyFromTo.ObjectInstance.Size, Id: copyFromTo.LocationCopyTo.Id})
+	if err != nil {
+		c.Logger.Error().Msgf("cannot get storagePartition for storageLocation: %v", copyFromTo.LocationCopyTo.Alias)
+		return &pb.NoParam{}, errors.Wrapf(err, "cannot get storagePartition for storageLocation: %v", copyFromTo.LocationCopyTo.Alias)
+	}
+
+	connection := models.Connection{}
+	err = json.Unmarshal([]byte(copyFromTo.LocationCopyTo.Connection), &connection)
+	if err != nil {
+		c.Logger.Error().Msgf("error mapping json")
+		return &pb.NoParam{}, errors.Wrapf(err, "error mapping json for storageLocation: %v", copyFromTo.LocationCopyTo.Alias)
+	}
+
+	daLogger := zLogger.NewZWrapper(c.Logger)
+	vfsConfig, err := config.LoadVfsConfig(copyFromTo.LocationCopyTo.Connection)
+	if err != nil {
+		c.Logger.Error().Msgf("error mapping json for storage location connection field: %v", err)
+		return nil, errors.Wrapf(err, "error mapping json for storage location connection field")
+	}
+	vfs, err := vfsrw.NewFS(vfsConfig, daLogger)
+	if err != nil {
+		c.Logger.Warn().Msgf("cannot create vfs: %v", err)
+		return &pb.NoParam{}, errors.Wrapf(err, "error mapping json for storageLocation: %v", copyFromTo.LocationCopyTo.Alias)
+	}
+
+	path := connection.Folder + storagePartition.Alias + "/" + filepath.Base(copyFromTo.ObjectInstance.Path)
+	sourceFP, err := vfs.Open(copyFromTo.ObjectInstance.Path)
+
+	if err == nil {
+		storagePartition.CurrentSize += copyFromTo.ObjectInstance.Size
+		storagePartition.CurrentObjects++
+		objectInstance := &pb.ObjectInstance{Path: path, Status: "new", ObjectId: copyFromTo.ObjectInstance.ObjectId, StoragePartitionId: storagePartition.Id, Size: copyFromTo.ObjectInstance.Size}
+		_, err = c.ClientStorageHandlerHandler.CreateObjectInstance(ctx, objectInstance)
+		if err != nil {
+			c.Logger.Error().Msgf("Could not create objectInstance for object with ID: %v", copyFromTo.ObjectInstance.ObjectId)
+			return &pb.NoParam{}, errors.Wrapf(err, "Could not create objectInstance for object with ID: %v", copyFromTo.ObjectInstance.ObjectId)
+		}
+		_, err = c.ClientStorageHandlerHandler.UpdateStoragePartition(ctx, storagePartition)
+		if err != nil {
+			c.Logger.Error().Msgf("Could not update storage partition with ID: %v", storagePartition.Id)
+			return &pb.NoParam{}, errors.Wrapf(err, "Could not update storage partition with ID: %v", storagePartition.Id)
+		}
+
+		targetFP, err := writefs.Create(vfs, path)
+		if err != nil {
+			c.Logger.Error().Msgf("cannot create target for path '%s': %v", path, err)
+			sourceFP.Close()
+			return &pb.NoParam{}, errors.Wrapf(err, "cannot create target for path '%s': %v", path, err)
+		}
+		defer func() {
+			if err := targetFP.Close(); err != nil {
+				c.Logger.Error().Msgf("cannot close target: %v", err)
+			}
+		}()
+		csWriter, err := checksum.NewChecksumWriter(
+			[]checksum.DigestAlgorithm{checksum.DigestSHA512},
+			targetFP,
+		)
+		if err != nil {
+			c.Logger.Error().Msgf("cannot create checksum writer for file '%s%s': %v", vfs, path, err)
+			sourceFP.Close()
+			return &pb.NoParam{}, errors.Wrapf(err, "cannot create checksum writer for file '%s%s': %v", vfs, path, err)
+		}
+		_, err = io.Copy(csWriter, sourceFP)
+		if err != nil {
+			if err := csWriter.Close(); err != nil {
+				c.Logger.Error().Msgf("cannot close checksum writer: %v", err)
+				return &pb.NoParam{}, errors.Wrapf(err, "cannot close checksum writer: %v", err)
+			}
+			c.Logger.Error().Msgf("error writing file to path '%s%s': %v", vfs, path, err)
+			sourceFP.Close()
+			return &pb.NoParam{}, errors.Wrapf(err, "error writing file to path '%s%s': %v", vfs, path, err)
+		}
+		if err := csWriter.Close(); err != nil {
+			c.Logger.Error().Msgf("cannot close checksum writer: %v", err)
+			return &pb.NoParam{}, errors.Wrapf(err, "cannot close checksum writer: %v", err)
+		}
+		sourceFP.Close()
+		vfs.Close()
+
+	}
+	return &pb.NoParam{}, nil
 }

@@ -27,4 +27,5 @@ service DispatcherStorageHandlerService {
 service CheckerStorageHandlerService {
   rpc Ping(google.protobuf.Empty) returns (genericproto.DefaultResponse) {}
   rpc GetObjectInstanceChecksum(dlzamanagerproto.ObjectInstance) returns (dlzamanagerproto.Id) {};
+  rpc CopyArchiveTo(dlzamanagerproto.CopyFromTo) returns (dlzamanagerproto.NoParam) {};
 }
