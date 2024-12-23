@@ -78,13 +78,15 @@ func LoadConfig(fSys fs.FS, fp string, conf *Config) error {
 	return nil
 }
 
-func LoadVfsConfig(connectionString string) (vfsrw.Config, error) {
+func LoadVfsConfig(connectionStrings ...string) (vfsrw.Config, error) {
 	vfsMap := make(map[string]*vfsrw.VFS)
-	connection := Connection{}
-	err := json.Unmarshal([]byte(connectionString), &connection)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error mapping json for storage location connection field")
+	for _, connectionString := range connectionStrings {
+		connection := Connection{}
+		err := json.Unmarshal([]byte(connectionString), &connection)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error mapping json for storage location connection field")
+		}
+		maps.Copy(vfsMap, connection.VFS)
 	}
-	maps.Copy(vfsMap, connection.VFS)
 	return vfsMap, nil
 }

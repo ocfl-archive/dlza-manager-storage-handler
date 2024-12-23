@@ -86,6 +86,12 @@ func (c *CheckerStorageHandlerServer) CopyArchiveTo(ctx context.Context, copyFro
 		return &pb.NoParam{}, errors.Wrapf(err, "cannot get storagePartition for storageLocation: %v", copyFromTo.LocationCopyTo.Alias)
 	}
 
+	storageLocationToCopyFrom, err := c.ClientStorageHandlerHandler.GetStorageLocationByObjectInstanceId(ctx, &pb.Id{Id: copyFromTo.ObjectInstance.Id})
+	if err != nil {
+		c.Logger.Error().Msgf("cannot get GetStorageLocationByObjectInstanceId for object instance ID: %v", copyFromTo.ObjectInstance.Id)
+		return &pb.NoParam{}, errors.Wrapf(err, "cannot get GetStorageLocationByObjectInstanceId for object instance ID: %v", copyFromTo.ObjectInstance.Id)
+	}
+
 	connection := models.Connection{}
 	err = json.Unmarshal([]byte(copyFromTo.LocationCopyTo.Connection), &connection)
 	if err != nil {
@@ -94,7 +100,7 @@ func (c *CheckerStorageHandlerServer) CopyArchiveTo(ctx context.Context, copyFro
 	}
 
 	daLogger := zLogger.NewZWrapper(c.Logger)
-	vfsConfig, err := config.LoadVfsConfig(copyFromTo.LocationCopyTo.Connection)
+	vfsConfig, err := config.LoadVfsConfig(copyFromTo.LocationCopyTo.Connection, storageLocationToCopyFrom.Connection)
 	if err != nil {
 		c.Logger.Error().Msgf("error mapping json for storage location connection field: %v", err)
 		return nil, errors.Wrapf(err, "error mapping json for storage location connection field")
@@ -125,9 +131,9 @@ func (c *CheckerStorageHandlerServer) CopyArchiveTo(ctx context.Context, copyFro
 
 		targetFP, err := writefs.Create(vfs, path)
 		if err != nil {
-			c.Logger.Error().Msgf("cannot create target for path '%s': %v", path, err)
+			c.Logger.Error().Msgf("cannot create target for path '%v': %s", path, err)
 			sourceFP.Close()
-			return &pb.NoParam{}, errors.Wrapf(err, "cannot create target for path '%s': %v", path, err)
+			return &pb.NoParam{}, errors.Wrapf(err, "cannot create target for path '%v': %s", path, err)
 		}
 		defer func() {
 			if err := targetFP.Close(); err != nil {
@@ -141,7 +147,7 @@ func (c *CheckerStorageHandlerServer) CopyArchiveTo(ctx context.Context, copyFro
 		if err != nil {
 			c.Logger.Error().Msgf("cannot create checksum writer for file '%s%s': %v", vfs, path, err)
 			sourceFP.Close()
-			return &pb.NoParam{}, errors.Wrapf(err, "cannot create checksum writer for file '%s%s': %v", vfs, path, err)
+			return &pb.NoParam{}, errors.Wrapf(err, "cannot create checksum writer for file '%v%v': %s", vfs, path, err)
 		}
 		_, err = io.Copy(csWriter, sourceFP)
 		if err != nil {
@@ -149,9 +155,9 @@ func (c *CheckerStorageHandlerServer) CopyArchiveTo(ctx context.Context, copyFro
 				c.Logger.Error().Msgf("cannot close checksum writer: %v", err)
 				return &pb.NoParam{}, errors.Wrapf(err, "cannot close checksum writer: %v", err)
 			}
-			c.Logger.Error().Msgf("error writing file to path '%s%s': %v", vfs, path, err)
+			c.Logger.Error().Msgf("error writing file to path '%v%v': %s", vfs, path, err)
 			sourceFP.Close()
-			return &pb.NoParam{}, errors.Wrapf(err, "error writing file to path '%s%s': %v", vfs, path, err)
+			return &pb.NoParam{}, errors.Wrapf(err, "error writing file to path '%v%v': %s", vfs, path, err)
 		}
 		if err := csWriter.Close(); err != nil {
 			c.Logger.Error().Msgf("cannot close checksum writer: %v", err)
@@ -160,6 +166,9 @@ func (c *CheckerStorageHandlerServer) CopyArchiveTo(ctx context.Context, copyFro
 		sourceFP.Close()
 		vfs.Close()
 
+	} else {
+		c.Logger.Error().Msgf("error opening file with path %v: %s", copyFromTo.ObjectInstance.Path, err)
+		return nil, errors.Wrapf(err, "error opening file with path %v", copyFromTo.ObjectInstance.Path)
 	}
 	return &pb.NoParam{}, nil
 }
