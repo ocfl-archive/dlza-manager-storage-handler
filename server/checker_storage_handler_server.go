@@ -40,6 +40,7 @@ func (c *CheckerStorageHandlerServer) GetObjectInstanceChecksum(ctx context.Cont
 	sourceFP, err := vfs.Open(objectInstance.Path)
 	if err != nil {
 		c.Logger.Error().Msgf("cannot read file '%s': %v", objectInstance.Path, err)
+		vfs.Close()
 		return nil, errors.Wrapf(err, "cannot read file '%v'", objectInstance.Path)
 	}
 
@@ -50,6 +51,8 @@ func (c *CheckerStorageHandlerServer) GetObjectInstanceChecksum(ctx context.Cont
 	)
 	if err != nil {
 		c.Logger.Error().Msgf("cannot create new checksum writer: '%s'", err)
+		sourceFP.Close()
+		vfs.Close()
 		return nil, errors.Wrapf(err, "cannot create new checksum writer: '%s'", err)
 	}
 	_, err = io.Copy(csWriter, sourceFP)
@@ -61,6 +64,7 @@ func (c *CheckerStorageHandlerServer) GetObjectInstanceChecksum(ctx context.Cont
 		if err := sourceFP.Close(); err != nil {
 			c.Logger.Error().Msgf("cannot close source: %v", err)
 		}
+		vfs.Close()
 		return nil, errors.Wrapf(err, "error writing file")
 	}
 	if err := csWriter.Close(); err != nil {
@@ -72,10 +76,12 @@ func (c *CheckerStorageHandlerServer) GetObjectInstanceChecksum(ctx context.Cont
 		if err := sourceFP.Close(); err != nil {
 			c.Logger.Error().Msgf("cannot close source: %v", err)
 		}
+		vfs.Close()
 		c.Logger.Error().Msgf("cannot get checksum: %v", err)
 		return nil, errors.Wrapf(err, "cannot get checksum for file '%v'", objectInstance.Path)
 	}
-
+	sourceFP.Close()
+	vfs.Close()
 	return &pb.Id{Id: checksums[checksum.DigestSHA512]}, nil
 }
 
@@ -165,7 +171,6 @@ func (c *CheckerStorageHandlerServer) CopyArchiveTo(ctx context.Context, copyFro
 		}
 		sourceFP.Close()
 		vfs.Close()
-
 	} else {
 		c.Logger.Error().Msgf("error opening file with path %v: %s", copyFromTo.ObjectInstance.Path, err)
 		return nil, errors.Wrapf(err, "error opening file with path %v", copyFromTo.ObjectInstance.Path)
