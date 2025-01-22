@@ -4,7 +4,7 @@ import (
 	"emperror.dev/errors"
 	"encoding/json"
 	"github.com/BurntSushi/toml"
-	"github.com/je4/filesystem/v2/pkg/vfsrw"
+	"github.com/je4/filesystem/v3/pkg/vfsrw"
 	"github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/stashconfig"
 	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"

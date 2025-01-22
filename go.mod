@@ -12,13 +12,12 @@ require (
 	github.com/aws/smithy-go v1.22.1
 	github.com/gin-contrib/cors v1.7.3
 	github.com/gin-gonic/gin v1.10.0
-	github.com/je4/filesystem/v2 v2.0.15
 	github.com/je4/indexer/v3 v3.0.7
 	github.com/je4/trustutil/v2 v2.0.28
 	github.com/je4/utils/v2 v2.0.56
-	github.com/ocfl-archive/dlza-manager v0.0.14
-	github.com/ocfl-archive/dlza-manager-handler v1.0.0
-	github.com/ocfl-archive/gocfl/v2 v2.0.6-beta3
+	github.com/ocfl-archive/dlza-manager v1.0.0-beta1
+	github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta1
+	github.com/ocfl-archive/gocfl/v2 v2.0.6-beta6
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/tus/tusd/v2 v2.6.0

@@ -2,7 +2,7 @@ package models
 
 import (
 	"database/sql"
-	"github.com/je4/filesystem/v2/pkg/vfsrw"
+	"github.com/je4/filesystem/v3/pkg/vfsrw"
 )
 
 const (

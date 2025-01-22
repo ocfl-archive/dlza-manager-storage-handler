@@ -5,9 +5,9 @@ import (
 	"emperror.dev/errors"
 	"encoding/json"
 	"fmt"
-	"github.com/je4/filesystem/v2/pkg/s3fsrw"
-	"github.com/je4/filesystem/v2/pkg/writefs"
-	"github.com/je4/filesystem/v2/pkg/zipfs"
+	"github.com/je4/filesystem/v3/pkg/s3fsrw"
+	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/je4/filesystem/v3/pkg/zipfs"
 	ironmaiden "github.com/je4/indexer/v3/pkg/indexer"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	handlerPb "github.com/ocfl-archive/dlza-manager-handler/handlerproto"
@@ -46,12 +46,11 @@ func (u *UploaderService) CopyFiles(order *pb.IncomingOrder) error {
 	c := context.Background()
 	ctx, cancel := context.WithTimeout(c, 10000*time.Second)
 	defer cancel()
-	daLogger := zLogger.NewZWrapper(*u.Logger)
 	_, err := u.StorageHandlerHandlerServiceClient.AlterStatus(ctx, &pb.StatusObject{Id: order.StatusId, Status: "archiving"})
 	if err != nil {
 		return errors.Wrapf(err, "cannot set status to copy file for collection '%s'", order.CollectionAlias)
 	}
-	_, err = CopyFiles(u.StorageHandlerHandlerServiceClient, ctx, order, u.ConfigObj, daLogger)
+	_, err = CopyFiles(u.StorageHandlerHandlerServiceClient, ctx, order, u.ConfigObj, *u.Logger)
 	if err != nil {
 		return errors.Wrapf(err, "cannot copy file for collection '%s'", order.CollectionAlias)
 	}
@@ -60,7 +59,7 @@ func (u *UploaderService) CopyFiles(order *pb.IncomingOrder) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot set status to copy file for collection '%s'", order.CollectionAlias)
 	}
-	_, err = DeleteTemporaryFiles(order.FilePath, u.ConfigObj, daLogger)
+	_, err = DeleteTemporaryFiles(order.FilePath, u.ConfigObj, *u.Logger)
 	if err != nil {
 		return errors.Wrapf(err, "cannot delete temporary files for collection '%s'", order.CollectionAlias)
 	}
@@ -86,7 +85,6 @@ func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson strin
 }
 
 func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLogger) ([]*pb.File, string, string, error) {
-	daLogger := zLogger.NewZWrapper(logger)
 	fsFactory, err := writefs.NewFactory()
 	if err != nil {
 		return nil, "", "", errors.Wrap(err, "cannot create filesystem factory")
@@ -99,10 +97,10 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 			URL:       conf.S3TempStorage.Url,
 			UseSSL:    true,
 		},
-	}, s3fsrw.ARNRegexStr, false, nil, daLogger), "^arn:", writefs.LowFS); err != nil {
+	}, s3fsrw.ARNRegexStr, false, nil, "", "", logger), "^arn:", writefs.LowFS); err != nil {
 		return nil, "", "", errors.Wrap(err, "cannot register zipfs")
 	}
-	if err := fsFactory.Register(zipfs.NewCreateFSFunc(), "([0-9a-f]{32}|\\.zip)$", writefs.HighFS); err != nil {
+	if err := fsFactory.Register(zipfs.NewCreateFSFunc(logger), "([0-9a-f]{32}|\\.zip)$", writefs.HighFS); err != nil {
 		return nil, "", "", errors.Wrap(err, "cannot register zipfs")
 	}
 	/*
@@ -111,17 +109,17 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 		}
 	*/
 
-	ocflFS, err := fsFactory.Get("arn:cache:s3:::" + conf.S3TempStorage.Bucket + "/" + tusFileName)
+	ocflFS, err := fsFactory.Get("arn:cache:s3:::"+conf.S3TempStorage.Bucket+"/"+tusFileName, true)
 
 	if err != nil {
-		daLogger.Errorf("cannot get filesystem for file '%s': %v", tusFileName, err)
-		daLogger.Debugf("%v%+v", err, ocfl.GetErrorStacktrace(err))
+		logger.Error().Msgf("cannot get filesystem for file '%s': %v", tusFileName, err)
+		logger.Debug().Msgf("%v%+v", err, ocfl.GetErrorStacktrace(err))
 		return nil, "", "", err
 	}
 	defer func() {
 		if err := writefs.Close(ocflFS); err != nil {
-			daLogger.Errorf("cannot close filesystem: %v", err)
-			daLogger.Errorf("%v%+v", err, ocfl.GetErrorStacktrace(err))
+			logger.Error().Msgf("cannot close filesystem: %v", err)
+			logger.Error().Msgf("%v%+v", err, ocfl.GetErrorStacktrace(err))
 		}
 	}()
 
@@ -140,15 +138,15 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 	ctx := ocfl.NewContextValidation(context.TODO())
 	storageRoot, err := ocfl.LoadStorageRoot(ctx, ocflFS, extensionFactory, logger)
 	if err != nil {
-		daLogger.Errorf("cannot open storage root: %v", err)
-		daLogger.Debugf("%v%+v", err, ocfl.GetErrorStacktrace(err))
+		logger.Error().Msgf("cannot open storage root: %v", err)
+		logger.Debug().Msgf("%v%+v", err, ocfl.GetErrorStacktrace(err))
 		return nil, "", "", err
 	}
 	metadata, err := storageRoot.ExtractMeta("", "")
 	if err != nil {
 		fmt.Printf("cannot extract metadata from storage root: %v\n", err)
-		daLogger.Errorf("cannot extract metadata from storage root: %v\n", err)
-		daLogger.Debugf("%v%+v", err, ocfl.GetErrorStacktrace(err))
+		logger.Error().Msgf("cannot extract metadata from storage root: %v\n", err)
+		logger.Debug().Msgf("%v%+v", err, ocfl.GetErrorStacktrace(err))
 		return nil, "", "", err
 	}
 
@@ -162,8 +160,8 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 	versionsJson, err := json.Marshal(versionsMap)
 	if err != nil {
 		fmt.Printf("cannot marshal versions to Json from storage root: %v\n", err)
-		daLogger.Errorf("cannot marshal versions to Json from storage root: %v\n", err)
-		daLogger.Debugf("%v%+v", err, ocfl.GetErrorStacktrace(err))
+		logger.Error().Msgf("cannot marshal versions to Json from storage root: %v\n", err)
+		logger.Debug().Msgf("%v%+v", err, ocfl.GetErrorStacktrace(err))
 		return nil, "", "", err
 	}
 

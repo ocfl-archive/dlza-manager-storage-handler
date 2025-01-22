@@ -13,8 +13,8 @@ import (
 	"io"
 	"path/filepath"
 
-	"github.com/je4/filesystem/v2/pkg/vfsrw"
-	"github.com/je4/filesystem/v2/pkg/writefs"
+	"github.com/je4/filesystem/v3/pkg/vfsrw"
+	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/pkg/errors"
 )
 
@@ -58,8 +58,7 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollectionWithObjectIds
 			if err != nil {
 				return &pb.NoParam{}, errors.Wrapf(err, "cannot load storage-handler config: %v", err)
 			}
-			daLogger := zLogger.NewZWrapper(d.Logger)
-			vfs, err := vfsrw.NewFS(config.VFS, daLogger)
+			vfs, err := vfsrw.NewFS(config.VFS, d.Logger)
 			if err != nil {
 				d.Logger.Warn().Msgf("cannot create vfs: %v", err)
 				continue

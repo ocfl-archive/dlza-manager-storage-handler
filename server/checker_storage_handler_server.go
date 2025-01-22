@@ -4,8 +4,8 @@ import (
 	"context"
 	"emperror.dev/errors"
 	"encoding/json"
-	"github.com/je4/filesystem/v2/pkg/vfsrw"
-	"github.com/je4/filesystem/v2/pkg/writefs"
+	"github.com/je4/filesystem/v3/pkg/vfsrw"
+	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/checksum"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	handlerPb "github.com/ocfl-archive/dlza-manager-handler/handlerproto"
@@ -34,8 +34,7 @@ func (c *CheckerStorageHandlerServer) GetObjectInstanceChecksum(ctx context.Cont
 		c.Logger.Error().Msgf("error mapping json for storage location connection field: %v", err)
 		return nil, errors.Wrapf(err, "error mapping json for storage location connection field")
 	}
-	daLogger := zLogger.NewZWrapper(c.Logger)
-	vfs, err := vfsrw.NewFS(vfsConfig, daLogger)
+	vfs, err := vfsrw.NewFS(vfsConfig, c.Logger)
 
 	sourceFP, err := vfs.Open(objectInstance.Path)
 	if err != nil {
@@ -105,13 +104,12 @@ func (c *CheckerStorageHandlerServer) CopyArchiveTo(ctx context.Context, copyFro
 		return &pb.NoParam{}, errors.Wrapf(err, "error mapping json for storageLocation: %v", copyFromTo.LocationCopyTo.Alias)
 	}
 
-	daLogger := zLogger.NewZWrapper(c.Logger)
 	vfsConfig, err := config.LoadVfsConfig(copyFromTo.LocationCopyTo.Connection, storageLocationToCopyFrom.Connection)
 	if err != nil {
 		c.Logger.Error().Msgf("error mapping json for storage location connection field: %v", err)
 		return nil, errors.Wrapf(err, "error mapping json for storage location connection field")
 	}
-	vfs, err := vfsrw.NewFS(vfsConfig, daLogger)
+	vfs, err := vfsrw.NewFS(vfsConfig, c.Logger)
 	if err != nil {
 		c.Logger.Warn().Msgf("cannot create vfs: %v", err)
 		return &pb.NoParam{}, errors.Wrapf(err, "error mapping json for storageLocation: %v", copyFromTo.LocationCopyTo.Alias)

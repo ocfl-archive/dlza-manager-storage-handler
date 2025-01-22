@@ -3,7 +3,7 @@ package models
 import (
 	"emperror.dev/errors"
 	"encoding/json"
-	"github.com/je4/filesystem/v2/pkg/vfsrw"
+	"github.com/je4/filesystem/v3/pkg/vfsrw"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	"maps"
 )

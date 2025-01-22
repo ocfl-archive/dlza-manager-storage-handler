@@ -3,11 +3,11 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"github.com/je4/filesystem/v2/pkg/vfsrw"
-	"github.com/je4/filesystem/v2/pkg/writefs"
+	"github.com/je4/filesystem/v3/pkg/vfsrw"
+	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/checksum"
 	config2 "github.com/je4/utils/v2/pkg/config"
-	zw "github.com/je4/utils/v2/pkg/zLogger"
+	"github.com/je4/utils/v2/pkg/zLogger"
 	pbHandler "github.com/ocfl-archive/dlza-manager-handler/handlerproto"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/config"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/models"
@@ -17,7 +17,7 @@ import (
 	"maps"
 )
 
-func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServiceClient, ctx context.Context, objectWithCollectionAliasAndPathAndFiles *pb.IncomingOrder, cfg config.Config, daLogger zw.ZWrapper) (*pb.Status, error) {
+func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServiceClient, ctx context.Context, objectWithCollectionAliasAndPathAndFiles *pb.IncomingOrder, cfg config.Config, logger zLogger.ZLogger) (*pb.Status, error) {
 
 	storageLocations, err := clientStorageHandlerHandler.GetStorageLocationsByCollectionAlias(ctx, &pb.CollectionAlias{CollectionAlias: objectWithCollectionAliasAndPathAndFiles.CollectionAlias})
 
@@ -34,9 +34,9 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 	maps.Copy(tempVfsMap, configObj.VFS)
 	configObj.VFS = tempVfsMap
 
-	vfs, err := vfsrw.NewFS(configObj.VFS, daLogger)
+	vfs, err := vfsrw.NewFS(configObj.VFS, logger)
 	if err != nil {
-		daLogger.Errorf("cannot create vfs: %v", err)
+		logger.Error().Msgf("cannot create vfs: %s", err)
 		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot create vfs: %v", err)
 	}
 
@@ -90,12 +90,12 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 
 		sourceFP, err := vfs.Open(objectWithCollectionAliasAndPathAndFiles.FilePath)
 		if err != nil {
-			daLogger.Errorf("cannot read file '%s': %v", objectWithCollectionAliasAndPathAndFiles.FilePath, err)
+			logger.Error().Msgf("cannot read file '%s': %v", objectWithCollectionAliasAndPathAndFiles.FilePath, err)
 			return errors.Wrapf(err, "cannot read file '%s': %v", objectWithCollectionAliasAndPathAndFiles.FilePath, err)
 		}
 		defer func() {
 			if err := sourceFP.Close(); err != nil {
-				daLogger.Errorf("cannot close source: %v", err)
+				logger.Error().Msgf("cannot close source: %v", err)
 			}
 		}()
 
@@ -105,7 +105,7 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 		}
 		defer func() {
 			if err := targetFP.Close(); err != nil {
-				daLogger.Errorf("cannot close target: %v", err)
+				logger.Error().Msgf("cannot close target: %v", err)
 			}
 		}()
 		csWriter, err := checksum.NewChecksumWriter(
@@ -118,23 +118,23 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 
 		_size, err := io.Copy(csWriter, sourceFP)
 		if err != nil {
-			daLogger.Errorf("error writing file")
+			logger.Error().Msgf("error writing file")
 			if err := csWriter.Close(); err != nil {
-				daLogger.Errorf("cannot close checksum writer: %v", err)
+				logger.Error().Msgf("cannot close checksum writer: %v", err)
 				return errors.Wrapf(err, "cannot close checksum writer: %v", err)
 			}
 			return errors.Wrapf(err, "error writing file: %v", objectWithCollectionAliasAndPathAndFiles.FilePath)
 		}
 		if _size != objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Size {
 			if err := csWriter.Close(); err != nil {
-				daLogger.Errorf("cannot close checksum writer: %v", err)
+				logger.Error().Msgf("cannot close checksum writer: %v", err)
 				return errors.Wrapf(err, "cannot close checksum writer: %v", err)
 			}
 			return errors.Wrapf(err, "size should be the same: '%v' != %v", _size, objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Size)
 		}
 
 		if err := csWriter.Close(); err != nil {
-			daLogger.Errorf("cannot close checksum writer: %v", err)
+			logger.Error().Msgf("cannot close checksum writer: %v", err)
 			return errors.Wrapf(err, "cannot close checksum writer: %v", err)
 		}
 		/*
@@ -153,22 +153,22 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 
 	_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: objectWithCollectionAliasAndPathAndFiles.StatusId, Status: "zip was copied"})
 	if err != nil {
-		daLogger.Warningf("could not AlterStatus with status id %s:  to zip was copied", objectWithCollectionAliasAndPathAndFiles.StatusId)
+		logger.Warn().Msgf("could not AlterStatus with status id %s:  to zip was copied", objectWithCollectionAliasAndPathAndFiles.StatusId)
 	}
 
 	return &pb.Status{Ok: true}, nil
 }
 
-func DeleteTemporaryFiles(filePath string, cfg config.Config, daLogger zw.ZWrapper) (*pb.Status, error) {
+func DeleteTemporaryFiles(filePath string, cfg config.Config, logger zLogger.ZLogger) (*pb.Status, error) {
 	tempVfsMap := getVfsTempMap(cfg)
-	vfs, err := vfsrw.NewFS(tempVfsMap, daLogger)
+	vfs, err := vfsrw.NewFS(tempVfsMap, logger)
 	if err != nil {
-		daLogger.Errorf("cannot create vfs: %v", err)
+		logger.Error().Msgf("cannot create vfs: %v", err)
 		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot create vfs: %v", err)
 	}
 
 	if err := writefs.Remove(vfs, filePath); err != nil {
-		daLogger.Errorf("error deleting file to '%s': %v", filePath, err)
+		logger.Error().Msgf("error deleting file to '%s': %v", filePath, err)
 		return &pb.Status{Ok: false}, errors.Wrapf(err, "error writing file to '%s': %v", filePath, err)
 	}
 
