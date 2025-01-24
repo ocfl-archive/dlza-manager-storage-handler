@@ -8,14 +8,14 @@ require (
 	github.com/BurntSushi/toml v1.4.0
 	github.com/aws/aws-sdk-go-v2/config v1.29.1
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.54
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.73.2
-	github.com/aws/smithy-go v1.22.1
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.72.3
+	github.com/aws/smithy-go v1.22.2
 	github.com/gin-contrib/cors v1.7.3
 	github.com/gin-gonic/gin v1.10.0
 	github.com/je4/filesystem/v3 v3.0.22
 	github.com/je4/indexer/v3 v3.0.7
 	github.com/je4/trustutil/v2 v2.0.28
-	github.com/je4/utils/v2 v2.0.56
+	github.com/je4/utils/v2 v2.0.57
 	github.com/ocfl-archive/dlza-manager v1.0.0-beta1
 	github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta1
 	github.com/ocfl-archive/gocfl/v2 v2.0.6-beta6
@@ -27,7 +27,7 @@ require (
 	go.ub.unibas.ch/cloud/genericproto/v2 v2.0.4
 	go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.31
 	golang.org/x/net v0.34.0
-	google.golang.org/grpc v1.69.4
+	google.golang.org/grpc v1.70.0
 	google.golang.org/protobuf v1.36.3
 )
 

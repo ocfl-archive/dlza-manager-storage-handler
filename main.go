@@ -209,6 +209,8 @@ func main() {
 		ctx,
 		configuration.WithCredentialsProvider(credentialsS3),
 		configuration.WithRegion("us-east-1"),
+		//configuration.WithRequestChecksumCalculation(0),
+		//configuration.WithResponseChecksumValidation(0),
 	)
 	if err != nil {
 		panic(err.Error())
