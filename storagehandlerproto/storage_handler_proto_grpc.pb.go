@@ -117,6 +117,7 @@ var ClerkStorageHandlerService_ServiceDesc = grpc.ServiceDesc{
 const (
 	DispatcherStorageHandlerService_Ping_FullMethodName                                    = "/storagehandlerproto.DispatcherStorageHandlerService/Ping"
 	DispatcherStorageHandlerService_ChangeQualityForCollectionWithObjectIds_FullMethodName = "/storagehandlerproto.DispatcherStorageHandlerService/ChangeQualityForCollectionWithObjectIds"
+	DispatcherStorageHandlerService_CopyArchiveTo_FullMethodName                           = "/storagehandlerproto.DispatcherStorageHandlerService/CopyArchiveTo"
 )
 
 // DispatcherStorageHandlerServiceClient is the client API for DispatcherStorageHandlerService service.
@@ -125,6 +126,7 @@ const (
 type DispatcherStorageHandlerServiceClient interface {
 	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*proto.DefaultResponse, error)
 	ChangeQualityForCollectionWithObjectIds(ctx context.Context, in *dlzamanagerproto.CollectionAliases, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error)
+	CopyArchiveTo(ctx context.Context, in *dlzamanagerproto.CopyFromTo, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error)
 }
 
 type dispatcherStorageHandlerServiceClient struct {
@@ -153,12 +155,22 @@ func (c *dispatcherStorageHandlerServiceClient) ChangeQualityForCollectionWithOb
 	return out, nil
 }
 
+func (c *dispatcherStorageHandlerServiceClient) CopyArchiveTo(ctx context.Context, in *dlzamanagerproto.CopyFromTo, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error) {
+	out := new(dlzamanagerproto.NoParam)
+	err := c.cc.Invoke(ctx, DispatcherStorageHandlerService_CopyArchiveTo_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DispatcherStorageHandlerServiceServer is the server API for DispatcherStorageHandlerService service.
 // All implementations must embed UnimplementedDispatcherStorageHandlerServiceServer
 // for forward compatibility
 type DispatcherStorageHandlerServiceServer interface {
 	Ping(context.Context, *emptypb.Empty) (*proto.DefaultResponse, error)
 	ChangeQualityForCollectionWithObjectIds(context.Context, *dlzamanagerproto.CollectionAliases) (*dlzamanagerproto.NoParam, error)
+	CopyArchiveTo(context.Context, *dlzamanagerproto.CopyFromTo) (*dlzamanagerproto.NoParam, error)
 	mustEmbedUnimplementedDispatcherStorageHandlerServiceServer()
 }
 
@@ -171,6 +183,9 @@ func (UnimplementedDispatcherStorageHandlerServiceServer) Ping(context.Context, 
 }
 func (UnimplementedDispatcherStorageHandlerServiceServer) ChangeQualityForCollectionWithObjectIds(context.Context, *dlzamanagerproto.CollectionAliases) (*dlzamanagerproto.NoParam, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ChangeQualityForCollectionWithObjectIds not implemented")
+}
+func (UnimplementedDispatcherStorageHandlerServiceServer) CopyArchiveTo(context.Context, *dlzamanagerproto.CopyFromTo) (*dlzamanagerproto.NoParam, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CopyArchiveTo not implemented")
 }
 func (UnimplementedDispatcherStorageHandlerServiceServer) mustEmbedUnimplementedDispatcherStorageHandlerServiceServer() {
 }
@@ -222,6 +237,24 @@ func _DispatcherStorageHandlerService_ChangeQualityForCollectionWithObjectIds_Ha
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DispatcherStorageHandlerService_CopyArchiveTo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(dlzamanagerproto.CopyFromTo)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DispatcherStorageHandlerServiceServer).CopyArchiveTo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DispatcherStorageHandlerService_CopyArchiveTo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DispatcherStorageHandlerServiceServer).CopyArchiveTo(ctx, req.(*dlzamanagerproto.CopyFromTo))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DispatcherStorageHandlerService_ServiceDesc is the grpc.ServiceDesc for DispatcherStorageHandlerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -236,6 +269,10 @@ var DispatcherStorageHandlerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ChangeQualityForCollectionWithObjectIds",
 			Handler:    _DispatcherStorageHandlerService_ChangeQualityForCollectionWithObjectIds_Handler,
+		},
+		{
+			MethodName: "CopyArchiveTo",
+			Handler:    _DispatcherStorageHandlerService_CopyArchiveTo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

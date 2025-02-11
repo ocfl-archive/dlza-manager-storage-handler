@@ -6,6 +6,7 @@ import (
 	"github.com/je4/utils/v2/pkg/checksum"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	handlerPb "github.com/ocfl-archive/dlza-manager-handler/handlerproto"
+	"github.com/ocfl-archive/dlza-manager-storage-handler/config"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/models"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/service"
 	storageHandlerPb "github.com/ocfl-archive/dlza-manager-storage-handler/storagehandlerproto"
@@ -54,11 +55,11 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollectionWithObjectIds
 			if len(storageLocationsToCopyIn.StorageLocations) == 0 && len(storageLocationsToCopyIn.StorageLocations) == 0 {
 				continue
 			}
-			config, err := models.LoadStorageHandlerConfig(append(currentStorageLocationsPb.StorageLocations, storageLocationsToCopyIn.StorageLocations...))
+			configObj, err := models.LoadStorageHandlerConfig(append(currentStorageLocationsPb.StorageLocations, storageLocationsToCopyIn.StorageLocations...))
 			if err != nil {
 				return &pb.NoParam{}, errors.Wrapf(err, "cannot load storage-handler config: %v", err)
 			}
-			vfs, err := vfsrw.NewFS(config.VFS, d.Logger)
+			vfs, err := vfsrw.NewFS(configObj.VFS, d.Logger)
 			if err != nil {
 				d.Logger.Warn().Msgf("cannot create vfs: %v", err)
 				continue
@@ -188,5 +189,97 @@ func (d *DispatcherStorageHandlerServer) ChangeQualityForCollectionWithObjectIds
 		}
 	}
 
+	return &pb.NoParam{}, nil
+}
+
+func (d *DispatcherStorageHandlerServer) CopyArchiveTo(ctx context.Context, copyFromTo *pb.CopyFromTo) (*pb.NoParam, error) {
+	storagePartition, err := d.ClientStorageHandlerHandler.GetStoragePartitionForLocation(ctx, &pb.SizeAndId{Size: copyFromTo.ObjectInstance.Size, Id: copyFromTo.LocationCopyTo.Id})
+	if err != nil {
+		d.Logger.Error().Msgf("cannot get storagePartition for storageLocation: %v", copyFromTo.LocationCopyTo.Alias)
+		return &pb.NoParam{}, errors.Wrapf(err, "cannot get storagePartition for storageLocation: %v", copyFromTo.LocationCopyTo.Alias)
+	}
+
+	storageLocationToCopyFrom, err := d.ClientStorageHandlerHandler.GetStorageLocationByObjectInstanceId(ctx, &pb.Id{Id: copyFromTo.ObjectInstance.Id})
+	if err != nil {
+		d.Logger.Error().Msgf("cannot get GetStorageLocationByObjectInstanceId for object instance ID: %v", copyFromTo.ObjectInstance.Id)
+		return &pb.NoParam{}, errors.Wrapf(err, "cannot get GetStorageLocationByObjectInstanceId for object instance ID: %v", copyFromTo.ObjectInstance.Id)
+	}
+
+	connection := models.Connection{}
+	err = json.Unmarshal([]byte(copyFromTo.LocationCopyTo.Connection), &connection)
+	if err != nil {
+		d.Logger.Error().Msgf("error mapping json")
+		return &pb.NoParam{}, errors.Wrapf(err, "error mapping json for storageLocation: %v", copyFromTo.LocationCopyTo.Alias)
+	}
+
+	vfsConfig, err := config.LoadVfsConfig(copyFromTo.LocationCopyTo.Connection, storageLocationToCopyFrom.Connection)
+	if err != nil {
+		d.Logger.Error().Msgf("error mapping json for storage location connection field: %v", err)
+		return nil, errors.Wrapf(err, "error mapping json for storage location connection field")
+	}
+	vfs, err := vfsrw.NewFS(vfsConfig, d.Logger)
+	if err != nil {
+		d.Logger.Warn().Msgf("cannot create vfs: %v", err)
+		return &pb.NoParam{}, errors.Wrapf(err, "error mapping json for storageLocation: %v", copyFromTo.LocationCopyTo.Alias)
+	}
+
+	path := connection.Folder + storagePartition.Alias + "/" + filepath.Base(copyFromTo.ObjectInstance.Path)
+	sourceFP, err := vfs.Open(copyFromTo.ObjectInstance.Path)
+
+	if err == nil {
+		storagePartition.CurrentSize += copyFromTo.ObjectInstance.Size
+		storagePartition.CurrentObjects++
+		objectInstance := &pb.ObjectInstance{Path: path, Status: "new", ObjectId: copyFromTo.ObjectInstance.ObjectId, StoragePartitionId: storagePartition.Id, Size: copyFromTo.ObjectInstance.Size}
+		_, err = d.ClientStorageHandlerHandler.CreateObjectInstance(ctx, objectInstance)
+		if err != nil {
+			d.Logger.Error().Msgf("Could not create objectInstance for object with ID: %v", copyFromTo.ObjectInstance.ObjectId)
+			return &pb.NoParam{}, errors.Wrapf(err, "Could not create objectInstance for object with ID: %v", copyFromTo.ObjectInstance.ObjectId)
+		}
+		_, err = d.ClientStorageHandlerHandler.UpdateStoragePartition(ctx, storagePartition)
+		if err != nil {
+			d.Logger.Error().Msgf("Could not update storage partition with ID: %v", storagePartition.Id)
+			return &pb.NoParam{}, errors.Wrapf(err, "Could not update storage partition with ID: %v", storagePartition.Id)
+		}
+
+		targetFP, err := writefs.Create(vfs, path)
+		if err != nil {
+			d.Logger.Error().Msgf("cannot create target for path '%v': %s", path, err)
+			sourceFP.Close()
+			return &pb.NoParam{}, errors.Wrapf(err, "cannot create target for path '%v': %s", path, err)
+		}
+		defer func() {
+			if err := targetFP.Close(); err != nil {
+				d.Logger.Error().Msgf("cannot close target: %v", err)
+			}
+		}()
+		csWriter, err := checksum.NewChecksumWriter(
+			[]checksum.DigestAlgorithm{checksum.DigestSHA512},
+			targetFP,
+		)
+		if err != nil {
+			d.Logger.Error().Msgf("cannot create checksum writer for file '%s%s': %v", vfs, path, err)
+			sourceFP.Close()
+			return &pb.NoParam{}, errors.Wrapf(err, "cannot create checksum writer for file '%v%v': %s", vfs, path, err)
+		}
+		_, err = io.Copy(csWriter, sourceFP)
+		if err != nil {
+			if err := csWriter.Close(); err != nil {
+				d.Logger.Error().Msgf("cannot close checksum writer: %v", err)
+				return &pb.NoParam{}, errors.Wrapf(err, "cannot close checksum writer: %v", err)
+			}
+			d.Logger.Error().Msgf("error writing file to path '%v%v': %s", vfs, path, err)
+			sourceFP.Close()
+			return &pb.NoParam{}, errors.Wrapf(err, "error writing file to path '%v%v': %s", vfs, path, err)
+		}
+		if err := csWriter.Close(); err != nil {
+			d.Logger.Error().Msgf("cannot close checksum writer: %v", err)
+			return &pb.NoParam{}, errors.Wrapf(err, "cannot close checksum writer: %v", err)
+		}
+		sourceFP.Close()
+		vfs.Close()
+	} else {
+		d.Logger.Error().Msgf("error opening file with path %v: %s", copyFromTo.ObjectInstance.Path, err)
+		return nil, errors.Wrapf(err, "error opening file with path %v", copyFromTo.ObjectInstance.Path)
+	}
 	return &pb.NoParam{}, nil
 }

@@ -75,6 +75,10 @@ func LoadConfig(fSys fs.FS, fp string, conf *Config) error {
 	if conf.S3TempStorage.Secret == "" {
 		conf.S3TempStorage.Secret = os.Getenv("S3_SECRET")
 	}
+	err = os.Setenv("AWS_REQUEST_CHECKSUM_CALCULATION", "when_required")
+	if err != nil {
+		return errors.Wrapf(err, "cannot set env variable file while LoadConfig")
+	}
 	return nil
 }
 
