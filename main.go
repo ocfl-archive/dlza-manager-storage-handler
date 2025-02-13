@@ -360,6 +360,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		logger.Info().Msgf("Starting tus server: %s", serverTus.Addr)
 		if err := serverTus.ListenAndServeTLS("", ""); err != nil {
 			emperror.Panic(errors.Wrap(err, "cannot start http2 server"))
 		}
@@ -368,6 +369,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		logger.Info().Msgf("Starting grpc server: %s", grpcServer.GetAddr())
 		grpcServer.Startup()
 	}()
 	done := make(chan os.Signal, 1)
