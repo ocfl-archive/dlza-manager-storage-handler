@@ -44,10 +44,11 @@ type S3TempStorage struct {
 }
 
 type TusServer struct {
-	Addr    string `toml:"addr"`
-	ExtAddr string `toml:"extaddr"`
-	TLSCert string `toml:"tlscert"`
-	TLSKey  string `toml:"tlskey"`
+	Addr    string   `toml:"addr"`
+	ExtAddr string   `toml:"extaddr"`
+	TLSCert string   `toml:"tlscert"`
+	TLSKey  string   `toml:"tlskey"`
+	RootCA  []string `toml:"rootca"`
 }
 
 type Connection struct {

@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"emperror.dev/emperror"
 	"emperror.dev/errors"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	configuration "github.com/aws/aws-sdk-go-v2/config"
@@ -277,6 +279,7 @@ func main() {
 	}()
 
 	var cert tls.Certificate
+	var addCA = []*x509.Certificate{}
 	if conf.TusServer.TLSCert == "" {
 		certBytes, err := fs.ReadFile(certs.CertFS, "ub-log.ub.unibas.ch.cert.pem")
 		if err != nil {
@@ -289,14 +292,52 @@ func main() {
 		if cert, err = tls.X509KeyPair(certBytes, keyBytes); err != nil {
 			emperror.Panic(errors.Wrap(err, "cannot create internal cert"))
 		}
+		rootCABytes, err := fs.ReadFile(certs.CertFS, "ca.cert.pem")
+		if err != nil {
+			emperror.Panic(errors.Wrapf(err, "cannot read root ca %v/%s", certs.CertFS, "ca.cert.pem"))
+		}
+		block, _ := pem.Decode(rootCABytes)
+		if block == nil {
+			emperror.Panic(errors.Wrapf(err, "cannot decode root ca"))
+		}
+		rootCA, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			emperror.Panic(errors.Wrap(err, "cannot parse root ca"))
+		}
+		addCA = append(addCA, rootCA)
 	} else {
 		if cert, err = tls.LoadX509KeyPair(conf.TusServer.TLSCert, conf.TusServer.TLSKey); err != nil {
 			emperror.Panic(errors.Wrapf(err, "cannot load key pair %s - %s", conf.TusServer.TLSCert, conf.TusServer.TLSKey))
 		}
+		if conf.TusServer.RootCA != nil {
+			for _, caName := range conf.TusServer.RootCA {
+				rootCABytes, err := os.ReadFile(caName)
+				if err != nil {
+					emperror.Panic(errors.Wrapf(err, "cannot read root ca %s", caName))
+				}
+				block, _ := pem.Decode(rootCABytes)
+				if block == nil {
+					emperror.Panic(errors.Wrapf(err, "cannot decode root ca"))
+				}
+				rootCA, err := x509.ParseCertificate(block.Bytes)
+				if err != nil {
+					emperror.Panic(errors.Wrap(err, "cannot parse root ca"))
+				}
+				addCA = append(addCA, rootCA)
+			}
+		}
+	}
+	rootCAs, _ := x509.SystemCertPool()
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+	for _, ca := range addCA {
+		rootCAs.AddCert(ca)
 	}
 
 	var tlsConfig = &tls.Config{
 		Certificates: []tls.Certificate{cert},
+		RootCAs:      rootCAs,
 	}
 	corsV := cors.New(cors.Config{
 		AllowAllOrigins: true,
