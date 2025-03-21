@@ -115,9 +115,8 @@ var ClerkStorageHandlerService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	DispatcherStorageHandlerService_Ping_FullMethodName                                    = "/storagehandlerproto.DispatcherStorageHandlerService/Ping"
-	DispatcherStorageHandlerService_ChangeQualityForCollectionWithObjectIds_FullMethodName = "/storagehandlerproto.DispatcherStorageHandlerService/ChangeQualityForCollectionWithObjectIds"
-	DispatcherStorageHandlerService_CopyArchiveTo_FullMethodName                           = "/storagehandlerproto.DispatcherStorageHandlerService/CopyArchiveTo"
+	DispatcherStorageHandlerService_Ping_FullMethodName          = "/storagehandlerproto.DispatcherStorageHandlerService/Ping"
+	DispatcherStorageHandlerService_CopyArchiveTo_FullMethodName = "/storagehandlerproto.DispatcherStorageHandlerService/CopyArchiveTo"
 )
 
 // DispatcherStorageHandlerServiceClient is the client API for DispatcherStorageHandlerService service.
@@ -125,7 +124,6 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DispatcherStorageHandlerServiceClient interface {
 	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*proto.DefaultResponse, error)
-	ChangeQualityForCollectionWithObjectIds(ctx context.Context, in *dlzamanagerproto.CollectionAliases, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error)
 	CopyArchiveTo(ctx context.Context, in *dlzamanagerproto.CopyFromTo, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error)
 }
 
@@ -146,15 +144,6 @@ func (c *dispatcherStorageHandlerServiceClient) Ping(ctx context.Context, in *em
 	return out, nil
 }
 
-func (c *dispatcherStorageHandlerServiceClient) ChangeQualityForCollectionWithObjectIds(ctx context.Context, in *dlzamanagerproto.CollectionAliases, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error) {
-	out := new(dlzamanagerproto.NoParam)
-	err := c.cc.Invoke(ctx, DispatcherStorageHandlerService_ChangeQualityForCollectionWithObjectIds_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *dispatcherStorageHandlerServiceClient) CopyArchiveTo(ctx context.Context, in *dlzamanagerproto.CopyFromTo, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error) {
 	out := new(dlzamanagerproto.NoParam)
 	err := c.cc.Invoke(ctx, DispatcherStorageHandlerService_CopyArchiveTo_FullMethodName, in, out, opts...)
@@ -169,7 +158,6 @@ func (c *dispatcherStorageHandlerServiceClient) CopyArchiveTo(ctx context.Contex
 // for forward compatibility
 type DispatcherStorageHandlerServiceServer interface {
 	Ping(context.Context, *emptypb.Empty) (*proto.DefaultResponse, error)
-	ChangeQualityForCollectionWithObjectIds(context.Context, *dlzamanagerproto.CollectionAliases) (*dlzamanagerproto.NoParam, error)
 	CopyArchiveTo(context.Context, *dlzamanagerproto.CopyFromTo) (*dlzamanagerproto.NoParam, error)
 	mustEmbedUnimplementedDispatcherStorageHandlerServiceServer()
 }
@@ -180,9 +168,6 @@ type UnimplementedDispatcherStorageHandlerServiceServer struct {
 
 func (UnimplementedDispatcherStorageHandlerServiceServer) Ping(context.Context, *emptypb.Empty) (*proto.DefaultResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
-}
-func (UnimplementedDispatcherStorageHandlerServiceServer) ChangeQualityForCollectionWithObjectIds(context.Context, *dlzamanagerproto.CollectionAliases) (*dlzamanagerproto.NoParam, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ChangeQualityForCollectionWithObjectIds not implemented")
 }
 func (UnimplementedDispatcherStorageHandlerServiceServer) CopyArchiveTo(context.Context, *dlzamanagerproto.CopyFromTo) (*dlzamanagerproto.NoParam, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CopyArchiveTo not implemented")
@@ -219,24 +204,6 @@ func _DispatcherStorageHandlerService_Ping_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DispatcherStorageHandlerService_ChangeQualityForCollectionWithObjectIds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(dlzamanagerproto.CollectionAliases)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DispatcherStorageHandlerServiceServer).ChangeQualityForCollectionWithObjectIds(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: DispatcherStorageHandlerService_ChangeQualityForCollectionWithObjectIds_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DispatcherStorageHandlerServiceServer).ChangeQualityForCollectionWithObjectIds(ctx, req.(*dlzamanagerproto.CollectionAliases))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _DispatcherStorageHandlerService_CopyArchiveTo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(dlzamanagerproto.CopyFromTo)
 	if err := dec(in); err != nil {
@@ -265,10 +232,6 @@ var DispatcherStorageHandlerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Ping",
 			Handler:    _DispatcherStorageHandlerService_Ping_Handler,
-		},
-		{
-			MethodName: "ChangeQualityForCollectionWithObjectIds",
-			Handler:    _DispatcherStorageHandlerService_ChangeQualityForCollectionWithObjectIds_Handler,
 		},
 		{
 			MethodName: "CopyArchiveTo",

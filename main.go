@@ -17,6 +17,7 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/je4/filesystem/v3/pkg/vfsrw"
 	"github.com/je4/trustutil/v2/pkg/certutil"
 	configutil "github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/zLogger"
@@ -35,6 +36,7 @@ import (
 	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 	"go.ub.unibas.ch/cloud/miniresolver/v2/pkg/resolver"
 	"golang.org/x/net/http2"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"io"
 	"io/fs"
 	"log"
@@ -198,8 +200,28 @@ func main() {
 	}
 	resolver.DoPing(clientStorageHandlerHandler, logger)
 
-	storagehandlerproto.RegisterDispatcherStorageHandlerServiceServer(grpcServer, &server.DispatcherStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger})
-	storagehandlerproto.RegisterCheckerStorageHandlerServiceServer(grpcServer, &server.CheckerStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger})
+	storageLocations, err := clientStorageHandlerHandler.GetAllStorageLocations(context.Background(), &emptypb.Empty{})
+	if err != nil {
+		logger.Panic().Msgf("cannot GetAllStorageLocations: %v", err)
+	}
+
+	vfsConfig, err := config.LoadVfsConfig(storageLocations)
+	if err != nil {
+		logger.Panic().Msgf("error mapping json for storage location connection field: %v", err)
+	}
+
+	vfs, err := vfsrw.NewFS(vfsConfig, &l2)
+	if err != nil {
+		logger.Panic().Err(err).Msg("cannot create vfs")
+	}
+	defer func() {
+		if err := vfs.Close(); err != nil {
+			logger.Error().Err(err).Msg("cannot close vfs")
+		}
+	}()
+
+	storagehandlerproto.RegisterDispatcherStorageHandlerServiceServer(grpcServer, &server.DispatcherStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger, Vfs: vfs})
+	storagehandlerproto.RegisterCheckerStorageHandlerServiceServer(grpcServer, &server.CheckerStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger, Vfs: vfs})
 
 	uploaderService := service2.UploaderService{StorageHandlerHandlerServiceClient: clientStorageHandlerHandler, Logger: &logger, ConfigObj: *conf}
 	ctx := context.Background()

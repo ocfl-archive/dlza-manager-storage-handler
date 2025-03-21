@@ -21,7 +21,6 @@ service ClerkStorageHandlerService {
 
 service DispatcherStorageHandlerService {
   rpc Ping(google.protobuf.Empty) returns (genericproto.DefaultResponse) {}
-  rpc ChangeQualityForCollectionWithObjectIds(dlzamanagerproto.CollectionAliases) returns (dlzamanagerproto.NoParam) {};
   rpc CopyArchiveTo(dlzamanagerproto.CopyFromTo) returns (dlzamanagerproto.NoParam) {};
 }
 

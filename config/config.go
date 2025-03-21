@@ -7,6 +7,7 @@ import (
 	"github.com/je4/filesystem/v3/pkg/vfsrw"
 	"github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/stashconfig"
+	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 	"io/fs"
 	"maps"
@@ -83,11 +84,11 @@ func LoadConfig(fSys fs.FS, fp string, conf *Config) error {
 	return nil
 }
 
-func LoadVfsConfig(connectionStrings ...string) (vfsrw.Config, error) {
+func LoadVfsConfig(storageLocations *pb.StorageLocations) (vfsrw.Config, error) {
 	vfsMap := make(map[string]*vfsrw.VFS)
-	for _, connectionString := range connectionStrings {
+	for _, storageLocation := range storageLocations.StorageLocations {
 		connection := Connection{}
-		err := json.Unmarshal([]byte(connectionString), &connection)
+		err := json.Unmarshal([]byte(storageLocation.Connection), &connection)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error mapping json for storage location connection field")
 		}
