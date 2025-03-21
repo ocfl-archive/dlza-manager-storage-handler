@@ -41,7 +41,7 @@ func (d *DispatcherStorageHandlerServer) CopyArchiveTo(ctx context.Context, copy
 	path := connection.Folder + storagePartition.Alias + "/" + filepath.Base(copyFromTo.ObjectInstance.Path)
 	sourceFP, err := d.Vfs.Open(copyFromTo.ObjectInstance.Path)
 	if err != nil {
-		d.Logger.Error().Msgf("could not open file with path %s", copyFromTo.ObjectInstance.Path, err)
+		d.Logger.Error().Msgf("could not open file with path %s, err: %s", copyFromTo.ObjectInstance.Path, err)
 		return &pb.NoParam{}, errors.Wrapf(err, "could not open file with path %s", copyFromTo.ObjectInstance.Path)
 	}
 	storagePartition.CurrentSize += copyFromTo.ObjectInstance.Size
