@@ -737,6 +737,8 @@ github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta1 h1:mvl5Lc4cc03I/rYcuYI
 github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta1/go.mod h1:CM6/TuwBfskzmVfjvKHVuxGI2eknge16IQvjcFmMUJE=
 github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta2 h1:2iohW0pxfH6nEPOjL30RrU3BmmKejfzFo4sG2n2PQZ0=
 github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta2/go.mod h1:n8CMXUKJJBZgzwUUwuk0frA9AELXQqFbX3tD8kamvhg=
+github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta4 h1:hkRngfETynwaiaWy0d4pVTP35gg0cmRuGnGbfjXDqpI=
+github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta4/go.mod h1:YB7FHeU8XGz+3GEek4ra2PRixg/6ou1LWoBo/X5BD5o=
 github.com/ocfl-archive/dlza-manager-handler v1.0.0 h1:ldQfYxhPJbAnFeV3rBvwO7BWmlLZoL3u+nq7mpkEFsQ=
 github.com/ocfl-archive/dlza-manager-handler v1.0.0/go.mod h1:GJnVJPPUxDGRy1v1vItONhnY/HV43ppYNoRnkGk83rY=
 github.com/ocfl-archive/error v1.0.2 h1:xx5JD5ZCoH2SvgsVj+79NnKAvGNQku45Qu/8qszeAWw=
