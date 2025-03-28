@@ -24,12 +24,15 @@ import (
 	handlerClientProto "github.com/ocfl-archive/dlza-manager-handler/handlerproto"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/certs"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/config"
+	"github.com/ocfl-archive/dlza-manager-storage-handler/internal"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/server"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/service"
 	service2 "github.com/ocfl-archive/dlza-manager-storage-handler/service"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/storagehandlerproto"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
+	archiveerror "github.com/ocfl-archive/error/pkg/error"
 	"github.com/patrickmn/go-cache"
+	"github.com/rs/zerolog/log"
 	tusd "github.com/tus/tusd/v2/pkg/handler"
 	"github.com/tus/tusd/v2/pkg/s3store"
 	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger/v2"
@@ -39,7 +42,6 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"io"
 	"io/fs"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -51,7 +53,13 @@ import (
 	"time"
 )
 
+const errorTopic string = "dlza-manager-storage-handler"
+
+var ErrorFactory = archiveerror.NewFactory(errorTopic)
+
 var configFile = flag.String("config", "", "config file in toml format")
+
+var conf *config.Config
 
 const separator = "+"
 
@@ -102,7 +110,7 @@ func main() {
 		cfgFile = "storagehandler.toml"
 	}
 
-	conf := &config.Config{
+	conf = &config.Config{
 		LocalAddr: "localhost:8443",
 		//ResolverTimeout: config.Duration(10 * time.Minute),
 		ExternalAddr:            "https://localhost:8443",
@@ -116,12 +124,14 @@ func main() {
 		},
 	}
 	if err := config.LoadConfig(cfgFS, cfgFile, conf); err != nil {
-		log.Fatalf("cannot load toml from [%v] %s: %v", cfgFS, cfgFile, err)
+		log.Err(err).Msgf("cannot load toml from [%v] %s: %v", cfgFS, cfgFile, err)
 	}
+	configErrorFactory()
+
 	// create logger instance
 	hostname, err := os.Hostname()
 	if err != nil {
-		log.Fatalf("cannot get hostname: %v", err)
+		log.Err(err).Msgf("cannot get hostname: %v", err)
 	}
 
 	var loggerTLSConfig *tls.Config
@@ -129,11 +139,12 @@ func main() {
 	if conf.Log.Stash.TLS != nil {
 		loggerTLSConfig, loggerLoader, err = loader.CreateClientLoader(conf.Log.Stash.TLS, nil)
 		if err != nil {
-			log.Fatalf("cannot create client loader: %v", err)
+			log.Err(err).Msgf("cannot create client loader: %v", err)
 		}
 		defer loggerLoader.Close()
 	}
-
+	confT := conf
+	_ = confT
 	_logger, _logstash, _logfile, err := ublogger.CreateUbMultiLoggerTLS(conf.Log.Level, conf.Log.File,
 		ublogger.SetDataset(conf.Log.Stash.Dataset),
 		ublogger.SetLogStash(conf.Log.Stash.LogstashHost, conf.Log.Stash.LogstashPort, conf.Log.Stash.Namespace, conf.Log.Stash.LogstashTraceLevel),
@@ -141,7 +152,7 @@ func main() {
 		ublogger.SetTLSConfig(loggerTLSConfig),
 	)
 	if err != nil {
-		log.Fatalf("cannot create logger: %v", err)
+		log.Err(err).Msgf("cannot create logger: %v", err)
 	}
 	if _logstash != nil {
 		defer _logstash.Close()
@@ -159,6 +170,13 @@ func main() {
 		logger.Panic().Msgf("cannot create client loader: %v", err)
 	}
 	defer clientLoader.Close()
+
+	logger.Error().Any(ErrorFactory.LogError(
+		ErrorDataBaseRead,
+		"TestDatabaseError",
+		nil,
+	),
+	).Msg("")
 
 	// create TLS Certificate.
 	// the certificate MUST contain <package>.<service> as DNS name
@@ -445,4 +463,33 @@ func main() {
 	grpcServer.GracefulStop()
 	fmt.Println("Waiting for server shutdown")
 	wg.Wait()
+}
+
+func configErrorFactory() {
+	var archiveErrs []*archiveerror.Error
+	if conf.ErrorConfig != "" {
+		errorExt := filepath.Ext(conf.ErrorConfig)
+		var err error
+		switch errorExt {
+		case ".toml":
+			archiveErrs, err = archiveerror.LoadTOMLFile(conf.ErrorConfig)
+		case ".yaml":
+			archiveErrs, err = archiveerror.LoadYAMLFile(conf.ErrorConfig)
+		default:
+			err = errors.Errorf("unknown error config file extension %s", errorExt)
+		}
+		if err != nil {
+			log.Fatal().Err(err).Msgf("cannot load error config file %s", conf.ErrorConfig)
+		}
+	} else {
+		var err error
+		const errorsEmbedToml string = "errors.toml"
+		archiveErrs, err = archiveerror.LoadTOMLFileFS(internal.InternalFS, errorsEmbedToml)
+		if err != nil {
+			log.Fatal().Err(err).Msg("cannot load error config file")
+		}
+	}
+	if err := ErrorFactory.RegisterErrors(archiveErrs); err != nil {
+		log.Fatal().Err(err).Msg("cannot register errors")
+	}
 }

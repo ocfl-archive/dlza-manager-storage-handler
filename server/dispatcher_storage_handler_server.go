@@ -61,7 +61,9 @@ func (d *DispatcherStorageHandlerServer) CopyArchiveTo(ctx context.Context, copy
 	targetFP, err := writefs.Create(d.Vfs, path)
 	if err != nil {
 		d.Logger.Error().Msgf("cannot create target for path '%v': %s", path, err)
-		sourceFP.Close()
+		if err := sourceFP.Close(); err != nil {
+			d.Logger.Error().Msgf("cannot close sourceFP: %v", err)
+		}
 		return &pb.NoParam{}, errors.Wrapf(err, "cannot create target for path '%v': %s", path, err)
 	}
 	defer func() {
@@ -75,7 +77,9 @@ func (d *DispatcherStorageHandlerServer) CopyArchiveTo(ctx context.Context, copy
 	)
 	if err != nil {
 		d.Logger.Error().Msgf("cannot create checksum writer for file '%s%s': %v", d.Vfs, path, err)
-		sourceFP.Close()
+		if err := sourceFP.Close(); err != nil {
+			d.Logger.Error().Msgf("cannot close sourceFP: %v", err)
+		}
 		return &pb.NoParam{}, errors.Wrapf(err, "cannot create checksum writer for file '%v%v': %s", d.Vfs, path, err)
 	}
 	_, err = io.Copy(csWriter, sourceFP)
@@ -85,14 +89,18 @@ func (d *DispatcherStorageHandlerServer) CopyArchiveTo(ctx context.Context, copy
 			return &pb.NoParam{}, errors.Wrapf(err, "cannot close checksum writer: %v", err)
 		}
 		d.Logger.Error().Msgf("error writing file to path '%v%v': %s", d.Vfs, path, err)
-		sourceFP.Close()
+		if err := sourceFP.Close(); err != nil {
+			d.Logger.Error().Msgf("cannot close sourceFP: %v", err)
+		}
 		return &pb.NoParam{}, errors.Wrapf(err, "error writing file to path '%v%v': %s", d.Vfs, path, err)
 	}
 	if err := csWriter.Close(); err != nil {
 		d.Logger.Error().Msgf("cannot close checksum writer: %v", err)
 		return &pb.NoParam{}, errors.Wrapf(err, "cannot close checksum writer: %v", err)
 	}
-	sourceFP.Close()
+	if err := sourceFP.Close(); err != nil {
+		d.Logger.Error().Msgf("cannot close sourceFP: %v", err)
+	}
 
 	return &pb.NoParam{}, nil
 }

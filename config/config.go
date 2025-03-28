@@ -15,6 +15,7 @@ import (
 )
 
 type Config struct {
+	ErrorConfig             string             `toml:"errorconfig"`
 	LocalAddr               string             `toml:"localaddr"`
 	Domain                  string             `toml:"domain"`
 	ExternalAddr            string             `toml:"externaladdr"`
