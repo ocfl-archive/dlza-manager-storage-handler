@@ -18,9 +18,11 @@ require (
 	github.com/je4/utils/v2 v2.0.58
 	github.com/ocfl-archive/dlza-manager v1.0.0-beta3
 	github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta4
+	github.com/ocfl-archive/error v1.0.5
 	github.com/ocfl-archive/gocfl/v2 v2.0.6-beta6
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
+	github.com/rs/zerolog v1.33.0
 	github.com/tus/tusd/v2 v2.7.1
 	gitlab.switch.ch/ub-unibas/go-ublogger/v2 v2.0.2-0.20250331093945-4f0f0ce8c72d
 	go.ub.unibas.ch/cloud/certloader/v2 v2.0.18
@@ -115,7 +117,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
-	github.com/ocfl-archive/error v1.0.5 // indirect
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/pkg/sftp v1.13.8 // indirect
@@ -132,7 +133,6 @@ require (
 	github.com/ross-spencer/spargo v0.4.1 // indirect
 	github.com/ross-spencer/wikiprov v1.0.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
-	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/smallstep/certinfo v1.13.0 // indirect

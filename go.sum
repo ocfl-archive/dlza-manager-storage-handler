@@ -945,6 +945,7 @@ gitlab.switch.ch/ub-unibas/go-ublogger v1.0.0 h1:NLP24ZlRzzp1fI3zFlXgAyMjBvUsmn5
 gitlab.switch.ch/ub-unibas/go-ublogger v1.0.0/go.mod h1:LiuJgHzbImEO1WcPQ2UaMRGLOZA24a79AnPnICp8JOQ=
 gitlab.switch.ch/ub-unibas/go-ublogger/v2 v2.0.1 h1:B/XpfKBC3IwbecBIxX9G6ZZ8GgtsOdkPkV2LuAUIJL0=
 gitlab.switch.ch/ub-unibas/go-ublogger/v2 v2.0.1/go.mod h1:A9W/cBMpdDDiuGCeNiTS9JRlCLRxApXEhi1q/j/mAws=
+gitlab.switch.ch/ub-unibas/go-ublogger/v2 v2.0.2-0.20250331093945-4f0f0ce8c72d h1:zMDZBlY8+uHH7QXEpmFw4Zs91VFBQbP9x7w5TIFQYiI=
 gitlab.switch.ch/ub-unibas/go-ublogger/v2 v2.0.2-0.20250331093945-4f0f0ce8c72d/go.mod h1:A9W/cBMpdDDiuGCeNiTS9JRlCLRxApXEhi1q/j/mAws=
 go.etcd.io/etcd/api/v3 v3.5.17 h1:cQB8eb8bxwuxOilBpMJAEo8fAONyrdXTHUNcMd8yT1w=
 go.etcd.io/etcd/api/v3 v3.5.17/go.mod h1:d1hvkRuXkts6PmaYk2Vrgqbv7H4ADfAKhyJqHNLJCB4=
