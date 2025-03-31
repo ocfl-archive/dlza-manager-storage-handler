@@ -57,18 +57,18 @@ level = "debug"
 [log.stash]
 logstashhost="localhost"
 #logstashhost="ub-log.ub.unibas.ch"
-logstashport=5046
+logstashport=5047
 logstashtracelevel="ERROR"
-namespace="DLZA_SH"
+namespace="dlza_sh"
 dataset=""
 #dataset="almasync.alma2elastic"
 [log.stash.tls]
 type="file"
 interval="1h"
 [log.stash.tls.file]
-ca=["certs/ca-ingest.crt"]
-cert="certs/ub-dlza-ingest.ub.p.unibas.ch.cert.pem"
-key="certs/ub-dlza-ingest.ub.p.unibas.ch.key.pem"
+ca=["certs/ca-t.crt"]
+cert="certs/ub-log.ub.unibas-t.ch.cert.pem"
+key="certs/ub-log.ub.unibas-t.ch.key.pem"
 
 [s3tempstorage]
 type = "s3"

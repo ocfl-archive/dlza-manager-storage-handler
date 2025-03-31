@@ -942,8 +942,10 @@ github.com/zeebo/xxh3 v1.0.2/go.mod h1:5NWz9Sef7zIDm2JHfFlcQvNekmcEl9ekUZQQKCYaD
 gitlab.switch.ch/ub-unibas/go-testhelpers v0.0.0-20231004070116-a92f04ad03a5 h1:+89nmZvA6q0f9KCb06cKxiLzH3I3OiYvakwbdcFe170=
 gitlab.switch.ch/ub-unibas/go-testhelpers v0.0.0-20231004070116-a92f04ad03a5/go.mod h1:5CiTAKHNkvIYjvDJiXjGG662QdWsY6gLmnsdEKbwQKA=
 gitlab.switch.ch/ub-unibas/go-ublogger v1.0.0 h1:NLP24ZlRzzp1fI3zFlXgAyMjBvUsmn5ca7ddoLExofM=
+gitlab.switch.ch/ub-unibas/go-ublogger v1.0.0/go.mod h1:LiuJgHzbImEO1WcPQ2UaMRGLOZA24a79AnPnICp8JOQ=
 gitlab.switch.ch/ub-unibas/go-ublogger/v2 v2.0.1 h1:B/XpfKBC3IwbecBIxX9G6ZZ8GgtsOdkPkV2LuAUIJL0=
 gitlab.switch.ch/ub-unibas/go-ublogger/v2 v2.0.1/go.mod h1:A9W/cBMpdDDiuGCeNiTS9JRlCLRxApXEhi1q/j/mAws=
+gitlab.switch.ch/ub-unibas/go-ublogger/v2 v2.0.2-0.20250331093945-4f0f0ce8c72d/go.mod h1:A9W/cBMpdDDiuGCeNiTS9JRlCLRxApXEhi1q/j/mAws=
 go.etcd.io/etcd/api/v3 v3.5.17 h1:cQB8eb8bxwuxOilBpMJAEo8fAONyrdXTHUNcMd8yT1w=
 go.etcd.io/etcd/api/v3 v3.5.17/go.mod h1:d1hvkRuXkts6PmaYk2Vrgqbv7H4ADfAKhyJqHNLJCB4=
 go.etcd.io/etcd/client/pkg/v3 v3.5.17 h1:XxnDXAWq2pnxqx76ljWwiQ9jylbpC4rvkAeRVOUKKVw=

@@ -4337,8 +4337,6 @@ github.com/ocfl-archive/dlza-manager v0.0.8 h1:Hg3JsKcw3WNqHCINoGZovHmnZ0+/sicus
 github.com/ocfl-archive/dlza-manager v0.0.8/go.mod h1:UYjAQu+LGnr46fpDuaUvXkROOyiwzDThsi2wegPjJzI=
 github.com/ocfl-archive/dlza-manager-handler v0.0.8 h1:2hgpdvamBcCl6HUzv5Wb/cuS32eTGmP7M7/b8E4pLoE=
 github.com/ocfl-archive/dlza-manager-handler v0.0.8/go.mod h1:arkqy9TosckbjoWcnKYG+EUKUd8p999IRC96XFrVgRk=
-github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta4 h1:hkRngfETynwaiaWy0d4pVTP35gg0cmRuGnGbfjXDqpI=
-github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta4/go.mod h1:YB7FHeU8XGz+3GEek4ra2PRixg/6ou1LWoBo/X5BD5o=
 github.com/ocfl-archive/error v1.0.1 h1:XP+awJu6lGYU69VH/q/NGbtBG50dvO96ifTpxrD/uJo=
 github.com/ocfl-archive/error v1.0.1/go.mod h1:Epq35buaUI7vh7Q6As4mRsaHibhEPf25Z4XT/DO+xD4=
 github.com/ocfl-archive/gocfl/v2 v2.0.6-beta1 h1:048OPJF+NTWWS7tSuJcC74FL24pz8Xkkm1tHayHvDs0=
@@ -5034,7 +5032,7 @@ github.com/zenazn/goji v1.0.1 h1:4lbD8Mx2h7IvloP7r2C0D6ltZP6Ufip8Hn0wmSK5LR8=
 github.com/zenazn/goji v1.0.1/go.mod h1:7S9M489iMyHBNxwZnk9/EHS098H4/F6TATF2mIxtB1Q=
 gitlab.switch.ch/ub-unibas/go-ublogger v0.0.0-20240612084645-ba4f8357c0d4 h1:Mek2x+mD9jmCULgl4+OPCCY65A1cqzDjTyB+jx0WUgc=
 gitlab.switch.ch/ub-unibas/go-ublogger v0.0.0-20240612084645-ba4f8357c0d4/go.mod h1:LiuJgHzbImEO1WcPQ2UaMRGLOZA24a79AnPnICp8JOQ=
-gitlab.switch.ch/ub-unibas/go-ublogger v1.0.0/go.mod h1:LiuJgHzbImEO1WcPQ2UaMRGLOZA24a79AnPnICp8JOQ=
+gitlab.switch.ch/ub-unibas/go-ublogger/v2 v2.0.2-0.20250331093945-4f0f0ce8c72d h1:zMDZBlY8+uHH7QXEpmFw4Zs91VFBQbP9x7w5TIFQYiI=
 go.einride.tech/aip v0.66.0 h1:XfV+NQX6L7EOYK11yoHHFtndeaWh3KbD9/cN/6iWEt8=
 go.einride.tech/aip v0.66.0/go.mod h1:qAhMsfT7plxBX+Oy7Huol6YUvZ0ZzdUz26yZsQwfl1M=
 go.einride.tech/aip v0.67.1 h1:d/4TW92OxXBngkSOwWS2CH5rez869KpKMaN44mdxkFI=
