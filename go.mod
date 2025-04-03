@@ -17,7 +17,7 @@ require (
 	github.com/je4/trustutil/v2 v2.0.28
 	github.com/je4/utils/v2 v2.0.58
 	github.com/ocfl-archive/dlza-manager v1.0.0-beta5
-	github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta5
+	github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta6
 	github.com/ocfl-archive/error v1.0.5
 	github.com/ocfl-archive/gocfl/v2 v2.0.6-beta6
 	github.com/patrickmn/go-cache v2.1.0+incompatible
