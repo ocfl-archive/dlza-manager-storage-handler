@@ -14,30 +14,15 @@ import (
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	"github.com/pkg/errors"
 	"io"
-	"maps"
+	"io/fs"
 )
 
-func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServiceClient, ctx context.Context, objectWithCollectionAliasAndPathAndFiles *pb.IncomingOrder, cfg config.Config, logger zLogger.ZLogger) (*pb.Status, error) {
+func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServiceClient, ctx context.Context, objectWithCollectionAliasAndPathAndFiles *pb.IncomingOrder, vfs fs.FS, logger zLogger.ZLogger) (*pb.Status, error) {
 
 	storageLocations, err := clientStorageHandlerHandler.GetStorageLocationsByCollectionAlias(ctx, &pb.CollectionAlias{CollectionAlias: objectWithCollectionAliasAndPathAndFiles.CollectionAlias})
 
 	if err != nil {
 		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot get storageLocations for collection: %v", objectWithCollectionAliasAndPathAndFiles.CollectionAlias)
-	}
-	configObj, err := models.LoadStorageHandlerConfig(storageLocations.StorageLocations)
-	if err != nil {
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot load StorageHandler config: %v", err)
-	}
-
-	tempVfsMap := getVfsTempMap(cfg)
-
-	maps.Copy(tempVfsMap, configObj.VFS)
-	configObj.VFS = tempVfsMap
-
-	vfs, err := vfsrw.NewFS(configObj.VFS, logger)
-	if err != nil {
-		logger.Error().Msgf("cannot create vfs: %s", err)
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot create vfs: %v", err)
 	}
 
 	var storageLocation *pb.StorageLocation

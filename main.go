@@ -143,8 +143,7 @@ func main() {
 		}
 		defer loggerLoader.Close()
 	}
-	confT := conf
-	_ = confT
+
 	_logger, _logstash, _logfile, err := ublogger.CreateUbMultiLoggerTLS(conf.Log.Level, conf.Log.File,
 		ublogger.SetDataset(conf.Log.Stash.Dataset),
 		ublogger.SetLogStash(conf.Log.Stash.LogstashHost, conf.Log.Stash.LogstashPort, conf.Log.Stash.Namespace, conf.Log.Stash.LogstashTraceLevel),
@@ -170,13 +169,6 @@ func main() {
 		logger.Panic().Msgf("cannot create client loader: %v", err)
 	}
 	defer clientLoader.Close()
-
-	logger.Error().Any(ErrorFactory.LogError(
-		ErrorDataBaseRead,
-		"TestDatabaseError",
-		nil,
-	),
-	).Msg("")
 
 	// create TLS Certificate.
 	// the certificate MUST contain <package>.<service> as DNS name
@@ -223,7 +215,7 @@ func main() {
 		logger.Panic().Msgf("cannot GetAllStorageLocations: %v", err)
 	}
 
-	vfsConfig, err := config.LoadVfsConfig(storageLocations)
+	vfsConfig, err := config.LoadVfsConfig(storageLocations, *conf)
 	if err != nil {
 		logger.Panic().Msgf("error mapping json for storage location connection field: %v", err)
 	}
@@ -232,6 +224,7 @@ func main() {
 	if err != nil {
 		logger.Panic().Err(err).Msg("cannot create vfs")
 	}
+
 	defer func() {
 		if err := vfs.Close(); err != nil {
 			logger.Error().Err(err).Msg("cannot close vfs")
@@ -241,7 +234,7 @@ func main() {
 	storagehandlerproto.RegisterDispatcherStorageHandlerServiceServer(grpcServer, &server.DispatcherStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger, Vfs: vfs})
 	storagehandlerproto.RegisterCheckerStorageHandlerServiceServer(grpcServer, &server.CheckerStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger, Vfs: vfs})
 
-	uploaderService := service2.UploaderService{StorageHandlerHandlerServiceClient: clientStorageHandlerHandler, Logger: &logger, ConfigObj: *conf}
+	uploaderService := service2.UploaderService{StorageHandlerHandlerServiceClient: clientStorageHandlerHandler, Logger: &logger, Vfs: vfs, ConfigObj: *conf}
 	ctx := context.Background()
 	cs := cache.New(60*time.Minute, 60*time.Minute)
 	credentialsS3 := credentials.NewStaticCredentialsProvider(conf.S3TempStorage.Key, conf.S3TempStorage.Secret, "")
@@ -286,7 +279,6 @@ func main() {
 			select {
 			case event := <-handler.CompleteUploads:
 				fmt.Printf("Upload %s finished\n", event.Upload.ID)
-
 				basePathString := conf.S3TempStorage.UploadFolder + "/" + conf.S3TempStorage.Bucket + "/"
 				uploadId := strings.Split(event.Upload.ID, separator)[0]
 				filename := event.HTTPRequest.Header.Get("FileName")

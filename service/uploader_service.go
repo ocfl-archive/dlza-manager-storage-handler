@@ -17,6 +17,7 @@ import (
 	"github.com/ocfl-archive/dlza-manager/models"
 	"github.com/ocfl-archive/gocfl/v2/gocfl/cmd"
 	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
+	"io/fs"
 	"time"
 )
 
@@ -29,6 +30,7 @@ type UploaderService struct {
 	StorageHandlerHandlerServiceClient handlerPb.StorageHandlerHandlerServiceClient
 	ConfigObj                          config.Config
 	Logger                             *zLogger.ZLogger
+	Vfs                                fs.FS
 }
 
 func (u *UploaderService) TenantHasAccess(key string, collection string) (bool, error) {
@@ -50,7 +52,7 @@ func (u *UploaderService) CopyFiles(order *pb.IncomingOrder) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot set status to copy file for collection '%s'", order.CollectionAlias)
 	}
-	_, err = CopyFiles(u.StorageHandlerHandlerServiceClient, ctx, order, u.ConfigObj, *u.Logger)
+	_, err = CopyFiles(u.StorageHandlerHandlerServiceClient, ctx, order, u.Vfs, *u.Logger)
 	if err != nil {
 		return errors.Wrapf(err, "cannot copy file for collection '%s'", order.CollectionAlias)
 	}

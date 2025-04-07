@@ -85,7 +85,7 @@ func LoadConfig(fSys fs.FS, fp string, conf *Config) error {
 	return nil
 }
 
-func LoadVfsConfig(storageLocations *pb.StorageLocations) (vfsrw.Config, error) {
+func LoadVfsConfig(storageLocations *pb.StorageLocations, cfg Config) (vfsrw.Config, error) {
 	vfsMap := make(map[string]*vfsrw.VFS)
 	for _, storageLocation := range storageLocations.StorageLocations {
 		connection := Connection{}
@@ -95,5 +95,26 @@ func LoadVfsConfig(storageLocations *pb.StorageLocations) (vfsrw.Config, error) 
 		}
 		maps.Copy(vfsMap, connection.VFS)
 	}
+	maps.Copy(vfsMap, getVfsTempMap(cfg))
 	return vfsMap, nil
+}
+
+func getVfsTempMap(cfg Config) map[string]*vfsrw.VFS {
+	vfsTemp := vfsrw.VFS{
+		Type: cfg.S3TempStorage.Type,
+		Name: cfg.S3TempStorage.Name,
+		S3: &vfsrw.S3{
+			AccessKeyID:     config.EnvString(cfg.S3TempStorage.Key),
+			SecretAccessKey: config.EnvString(cfg.S3TempStorage.Secret),
+			Endpoint:        config.EnvString(cfg.S3TempStorage.Url),
+			Region:          "us-east-1",
+			UseSSL:          true,
+			Debug:           cfg.S3TempStorage.Debug,
+			CAPEM:           cfg.S3TempStorage.CAPEM,
+		},
+	}
+
+	tempVfsMap := make(map[string]*vfsrw.VFS)
+	tempVfsMap[cfg.S3TempStorage.Name] = &vfsTemp
+	return tempVfsMap
 }
