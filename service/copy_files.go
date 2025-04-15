@@ -32,7 +32,7 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 		}
 	}
 
-	storagePartition, err := clientStorageHandlerHandler.GetStoragePartitionForLocation(ctx, &pb.SizeAndId{Size: objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Size, Id: storageLocation.Id})
+	storagePartition, err := clientStorageHandlerHandler.GetStoragePartitionForLocation(ctx, &pb.SizeAndId{Size: objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Size, Id: storageLocation.Id, Object: objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object})
 	if err != nil {
 		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot get storagePartition for storageLocation: %v", storageLocation.Alias)
 	}
