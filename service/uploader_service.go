@@ -75,13 +75,19 @@ func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson strin
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot unmarshal object: %v", objectJson)
 	}
-	fileObjects, head, versions, err := extractMetadata(tusePath, confObj, *u.Logger)
+	var fileObjects []*pb.File
+	head := "v1"
+	versions := "{\"v1\" : {}}"
+	if !object.Binary {
+		fileObjects, head, versions, err = extractMetadata(tusePath, confObj, *u.Logger)
+		if err != nil {
+			return nil, errors.Wrapf(err, "cannot ExtractMetadata for: %v", tusePath)
+		}
+	}
 	object.Head = head
 	object.Versions = versions
 	objectPb := mapper.ConvertToObjectPb(object)
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot ExtractMetadata for: %v", tusePath)
-	}
+
 	objectAndFiles := &pb.ObjectAndFiles{CollectionAlias: collectionAlias, Object: objectPb, Files: fileObjects}
 	return objectAndFiles, nil
 }

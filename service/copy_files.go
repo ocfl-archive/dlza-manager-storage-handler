@@ -54,17 +54,27 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 	if err != nil {
 		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot SaveAllTableObjectsAfterCopying for collection with alias: %v and path: %v", objectWithCollectionAliasAndPathAndFiles.CollectionAlias, path)
 	}
-	for i, objectAndFile := range objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Files {
-		instanceWithPartitionAndObjectWithFile := &pb.InstanceWithPartitionAndObjectWithFile{}
-		if i == 0 {
-			instanceWithPartitionAndObjectWithFile.Object = objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object
-			instanceWithPartitionAndObjectWithFile.StoragePartition = storagePartition
-			instanceWithPartitionAndObjectWithFile.ObjectInstance = objectInstance
-			instanceWithPartitionAndObjectWithFile.CollectionAlias = objectWithCollectionAliasAndPathAndFiles.CollectionAlias
-		}
-		instanceWithPartitionAndObjectWithFile.File = objectAndFile
+	instanceWithPartitionAndObjectWithFile := &pb.InstanceWithPartitionAndObjectWithFile{}
+	if objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Binary {
+		instanceWithPartitionAndObjectWithFile.Object = objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object
+		instanceWithPartitionAndObjectWithFile.StoragePartition = storagePartition
+		instanceWithPartitionAndObjectWithFile.ObjectInstance = objectInstance
+		instanceWithPartitionAndObjectWithFile.CollectionAlias = objectWithCollectionAliasAndPathAndFiles.CollectionAlias
 		if err := stream.Send(instanceWithPartitionAndObjectWithFile); err != nil {
 			return &pb.Status{Ok: false}, errors.Wrapf(err, "Could store all table objects for collection: %v", objectWithCollectionAliasAndPathAndFiles.CollectionAlias)
+		}
+	} else {
+		for i, objectAndFile := range objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Files {
+			if i == 0 {
+				instanceWithPartitionAndObjectWithFile.Object = objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object
+				instanceWithPartitionAndObjectWithFile.StoragePartition = storagePartition
+				instanceWithPartitionAndObjectWithFile.ObjectInstance = objectInstance
+				instanceWithPartitionAndObjectWithFile.CollectionAlias = objectWithCollectionAliasAndPathAndFiles.CollectionAlias
+			}
+			instanceWithPartitionAndObjectWithFile.File = objectAndFile
+			if err := stream.Send(instanceWithPartitionAndObjectWithFile); err != nil {
+				return &pb.Status{Ok: false}, errors.Wrapf(err, "Could store all table objects for collection: %v", objectWithCollectionAliasAndPathAndFiles.CollectionAlias)
+			}
 		}
 	}
 	_, err = stream.CloseAndRecv()

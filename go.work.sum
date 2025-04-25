@@ -3097,6 +3097,7 @@ github.com/clbanning/mxj v1.8.4/go.mod h1:BVjHeAH+rl9rs6f+QIpeRl0tfu10SXn1pUSa5P
 github.com/clbanning/x2j v0.0.0-20191024224557-825249438eec h1:EdRZT3IeKQmfCSrgo8SZ8V3MEnskuJP0wCYNpe+aiXo=
 github.com/clbanning/x2j v0.0.0-20191024224557-825249438eec/go.mod h1:jMjuTZXRI4dUb/I5gc9Hdhagfvm9+RyrPryS/auMzxE=
 github.com/client9/misspell v0.3.4 h1:ta993UF76GwbvJcIo3Y68y/M3WxlpEHPWIGDkJYwzJI=
+github.com/cloudwego/iasm v0.2.0 h1:1KNIy1I1H9hNNFEEH3DVnI4UujN+1zjpuk6gwHLTssg=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f h1:WBZRG4aNOuI15bLRrCgN8fCq8E5Xuty6jGbmSNEvSsU=
 github.com/cncf/udpa/go v0.0.0-20200629203442-efcf912fb354/go.mod h1:WmhPx2Nbnhtbo57+VJT5O0JRkEi1Wbu0z5j0R8u5Hbk=
 github.com/cncf/udpa/go v0.0.0-20201120205902-5459f2c99403/go.mod h1:WmhPx2Nbnhtbo57+VJT5O0JRkEi1Wbu0z5j0R8u5Hbk=
@@ -4644,11 +4645,10 @@ github.com/nsf/jsondiff v0.0.0-20230430225905-43f6cf3098c1 h1:dOYG7LS/WK00RWZc8X
 github.com/nsf/jsondiff v0.0.0-20230430225905-43f6cf3098c1/go.mod h1:mpRZBD8SJ55OIICQ3iWH0Yz3cjzA61JdqMLoWXeB2+8=
 github.com/ocfl-archive/dlza-manager v0.0.8 h1:Hg3JsKcw3WNqHCINoGZovHmnZ0+/sicusrXyFjUfGlw=
 github.com/ocfl-archive/dlza-manager v0.0.8/go.mod h1:UYjAQu+LGnr46fpDuaUvXkROOyiwzDThsi2wegPjJzI=
-github.com/ocfl-archive/dlza-manager v1.0.0-beta8/go.mod h1:HNhklzYXMaczGD12XTyEtmFPa5LPyvYfNs14W26x+0Y=
+github.com/ocfl-archive/dlza-manager v1.0.0-beta9 h1:9dz2zZ27LJsmFr+PAANJaTmooEhzVtiG1oPDrY7TaPg=
+github.com/ocfl-archive/dlza-manager v1.0.0-beta9/go.mod h1:HNhklzYXMaczGD12XTyEtmFPa5LPyvYfNs14W26x+0Y=
 github.com/ocfl-archive/dlza-manager-handler v0.0.8 h1:2hgpdvamBcCl6HUzv5Wb/cuS32eTGmP7M7/b8E4pLoE=
 github.com/ocfl-archive/dlza-manager-handler v0.0.8/go.mod h1:arkqy9TosckbjoWcnKYG+EUKUd8p999IRC96XFrVgRk=
-github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta8 h1:undZiIEobEMaWYrYwsAt/0MoQp37eYKGI0GtTfXXb3w=
-github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta8/go.mod h1:obDFBGlbQPlYfOa8ehO/1BT7A62D6sLdrpza+KXaaJU=
 github.com/ocfl-archive/error v1.0.1 h1:XP+awJu6lGYU69VH/q/NGbtBG50dvO96ifTpxrD/uJo=
 github.com/ocfl-archive/error v1.0.1/go.mod h1:Epq35buaUI7vh7Q6As4mRsaHibhEPf25Z4XT/DO+xD4=
 github.com/ocfl-archive/gocfl/v2 v2.0.6-beta1 h1:048OPJF+NTWWS7tSuJcC74FL24pz8Xkkm1tHayHvDs0=
