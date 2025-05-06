@@ -15,6 +15,7 @@ import (
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	"github.com/ocfl-archive/dlza-manager/mapper"
 	"github.com/ocfl-archive/dlza-manager/models"
+	archiveerror "github.com/ocfl-archive/error/pkg/error"
 	"github.com/ocfl-archive/gocfl/v2/gocfl/cmd"
 	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
 	"io/fs"
@@ -69,7 +70,7 @@ func (u *UploaderService) CopyFiles(order *pb.IncomingOrder) error {
 	return nil
 }
 
-func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson string, collectionAlias string, confObj config.Config) (*pb.ObjectAndFiles, error) {
+func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson string, collectionAlias string, confObj config.Config, errorFactory *archiveerror.Factory) (*pb.ObjectAndFiles, error) {
 	object := models.Object{}
 	err := json.Unmarshal([]byte(objectJson), &object)
 	if err != nil {
@@ -79,7 +80,7 @@ func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson strin
 	head := "v1"
 	versions := "{\"v1\" : {}}"
 	if !object.Binary {
-		fileObjects, head, versions, err = extractMetadata(tusePath, confObj, *u.Logger)
+		fileObjects, head, versions, err = extractMetadata(tusePath, confObj, *u.Logger, errorFactory)
 		if err != nil {
 			return nil, errors.Wrapf(err, "cannot ExtractMetadata for: %v", tusePath)
 		}
@@ -92,7 +93,7 @@ func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson strin
 	return objectAndFiles, nil
 }
 
-func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLogger) ([]*pb.File, string, string, error) {
+func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLogger, errorFactory *archiveerror.Factory) ([]*pb.File, string, string, error) {
 	fsFactory, err := writefs.NewFactory()
 	if err != nil {
 		return nil, "", "", errors.Wrap(err, "cannot create filesystem factory")
@@ -138,13 +139,14 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 		nil,
 		nil,
 		nil,
-		logger)
+		logger,
+		"")
 	if err != nil {
 		return nil, "", "", errors.Wrap(err, "cannot instantiate extension factory")
 	}
 
 	ctx := ocfl.NewContextValidation(context.TODO())
-	storageRoot, err := ocfl.LoadStorageRoot(ctx, ocflFS, extensionFactory, logger)
+	storageRoot, err := ocfl.LoadStorageRoot(ctx, ocflFS, extensionFactory, logger, errorFactory, "")
 	if err != nil {
 		logger.Error().Msgf("cannot open storage root: %v", err)
 		logger.Debug().Msgf("%v%+v", err, ocfl.GetErrorStacktrace(err))
