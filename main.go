@@ -289,7 +289,7 @@ func main() {
 				if err != nil {
 					log.Printf("could not AlterStatus with status id %s:  to copied to temp storage", statusId)
 				}
-				objectAndFiles, err := uploaderService.CreateObjectAndFiles(uploadId, objectJson, collection, *conf)
+				objectAndFiles, err := uploaderService.CreateObjectAndFiles(uploadId, objectJson, collection, *conf, ErrorFactory)
 				if err != nil {
 					log.Printf("could not CreateObjectAndFiles for upload id %s: %v", event.Upload.ID, err)
 				} else {
