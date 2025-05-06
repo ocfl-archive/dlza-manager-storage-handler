@@ -1,0 +1,31 @@
+// protoc --go_out=. --go-grpc_out=. proto/copy.proto
+
+syntax="proto3";
+
+option go_package = "github.com/ocfl-archive/dlza-manager-storage-handler/storagehandlerproto";
+option java_package = "ch.unibas.ub.storagehandler.pg";
+option java_outer_classname = "StorageHandlerProto";
+option java_multiple_files = true;
+option objc_class_prefix = "UBB";
+option csharp_namespace = "Unibas.UB.StorageHandler.PG";
+
+package storagehandlerproto;
+
+import "google/protobuf/empty.proto";
+import "dlza_proto.proto";
+import "defaultResponse.proto";
+
+service ClerkStorageHandlerService {
+  rpc CreateStoragePartition(dlzamanagerproto.StoragePartition) returns (dlzamanagerproto.Status) {};
+}
+
+service DispatcherStorageHandlerService {
+  rpc Ping(google.protobuf.Empty) returns (genericproto.DefaultResponse) {}
+  rpc CopyArchiveTo(dlzamanagerproto.CopyFromTo) returns (dlzamanagerproto.NoParam) {};
+}
+
+service CheckerStorageHandlerService {
+  rpc Ping(google.protobuf.Empty) returns (genericproto.DefaultResponse) {}
+  rpc GetObjectInstanceChecksum(dlzamanagerproto.ObjectInstance) returns (dlzamanagerproto.Id) {};
+  rpc CopyArchiveTo(dlzamanagerproto.CopyFromTo) returns (dlzamanagerproto.NoParam) {};
+}
