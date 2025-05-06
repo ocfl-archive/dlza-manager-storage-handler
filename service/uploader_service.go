@@ -139,14 +139,13 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 		nil,
 		nil,
 		nil,
-		logger,
-		"")
+		logger)
 	if err != nil {
 		return nil, "", "", errors.Wrap(err, "cannot instantiate extension factory")
 	}
 
 	ctx := ocfl.NewContextValidation(context.TODO())
-	storageRoot, err := ocfl.LoadStorageRoot(ctx, ocflFS, extensionFactory, logger, errorFactory, "")
+	storageRoot, err := ocfl.LoadStorageRoot(ctx, ocflFS, extensionFactory, logger)
 	if err != nil {
 		logger.Error().Msgf("cannot open storage root: %v", err)
 		logger.Debug().Msgf("%v%+v", err, ocfl.GetErrorStacktrace(err))
