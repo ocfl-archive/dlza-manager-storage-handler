@@ -66,9 +66,9 @@ dataset=""
 type="file"
 interval="1h"
 [log.stash.tls.file]
-ca=["certs/ca-t.crt"]
-cert="certs/ub-log.ub.unibas-t.ch.cert.pem"
-key="certs/ub-log.ub.unibas-t.ch.key.pem"
+ca=["certs/ca.crt"]
+cert="certs/ub-log.ub.unibas.ch.cert.pem"
+key="certs/ub-log.ub.unibas.ch.key.pem"
 
 [s3tempstorage]
 type = "s3"

@@ -208,7 +208,6 @@ func main() {
 	if err != nil {
 		logger.Panic().Msgf("cannot create clientStorageHandlerHandler grpc client: %v", err)
 	}
-	resolver.DoPing(clientStorageHandlerHandler, logger)
 
 	storageLocations, err := clientStorageHandlerHandler.GetAllStorageLocations(context.Background(), &emptypb.Empty{})
 	if err != nil {
