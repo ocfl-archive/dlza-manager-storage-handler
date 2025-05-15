@@ -8,7 +8,7 @@ import (
 	"github.com/je4/filesystem/v3/pkg/s3fsrw"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/filesystem/v3/pkg/zipfs"
-	ironmaiden "github.com/je4/indexer/v3/pkg/indexer"
+	"github.com/je4/indexer/v3/pkg/indexer"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	handlerPb "github.com/ocfl-archive/dlza-manager-handler/handlerproto"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/config"
@@ -175,6 +175,7 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 	}
 
 	files := make([]*pb.File, 0)
+	it := 0
 	for index, fileRetr := range filesRetrieved {
 		file := pb.File{}
 		file.Checksum = index
@@ -183,7 +184,7 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 		extensions := fileRetr.Extension["NNNN-indexer"]
 		if extensions != nil {
 			switch v := extensions.(type) {
-			case *ironmaiden.ResultV2:
+			case *indexer.ResultV2:
 				file.Size = int64(v.Size)
 				file.Pronom = v.Pronom
 				if file.Pronom == "" {
@@ -196,12 +197,16 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 				if file.MimeType == "" {
 					file.MimeType = defaultMimeType
 				}
+				it++
 			}
 		} else {
 			file.MimeType = defaultMimeType
 			file.Pronom = defaultPronom
 		}
 		files = append(files, &file)
+	}
+	if it == 0 {
+		return nil, "", "", errors.New("No files were extracted")
 	}
 	return files, head, string(versionsJson), nil
 }
