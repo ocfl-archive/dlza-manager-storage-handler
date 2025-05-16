@@ -8,7 +8,6 @@ import (
 	"github.com/je4/filesystem/v3/pkg/s3fsrw"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/filesystem/v3/pkg/zipfs"
-	"github.com/je4/indexer/v3/pkg/indexer"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	handlerPb "github.com/ocfl-archive/dlza-manager-handler/handlerproto"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/config"
@@ -18,6 +17,7 @@ import (
 	archiveerror "github.com/ocfl-archive/error/pkg/error"
 	"github.com/ocfl-archive/gocfl/v2/gocfl/cmd"
 	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
+	"github.com/ocfl-archive/indexer/v3/pkg/indexer"
 	"io/fs"
 	"time"
 )
@@ -139,13 +139,14 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 		nil,
 		nil,
 		nil,
-		logger)
+		logger,
+		"")
 	if err != nil {
 		return nil, "", "", errors.Wrap(err, "cannot instantiate extension factory")
 	}
 
 	ctx := ocfl.NewContextValidation(context.TODO())
-	storageRoot, err := ocfl.LoadStorageRoot(ctx, ocflFS, extensionFactory, logger)
+	storageRoot, err := ocfl.LoadStorageRoot(ctx, ocflFS, extensionFactory, logger, errorFactory, "")
 	if err != nil {
 		logger.Error().Msgf("cannot open storage root: %v", err)
 		logger.Debug().Msgf("%v%+v", err, ocfl.GetErrorStacktrace(err))
