@@ -15,8 +15,8 @@ require (
 	github.com/je4/filesystem/v3 v3.0.29
 	github.com/je4/trustutil/v2 v2.0.30
 	github.com/je4/utils/v2 v2.0.60
-	github.com/ocfl-archive/dlza-manager v1.0.0-beta9
-	github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta8
+	github.com/ocfl-archive/dlza-manager v1.0.1
+	github.com/ocfl-archive/dlza-manager-handler v1.0.1
 	github.com/ocfl-archive/error v1.0.5
 	github.com/ocfl-archive/gocfl/v2 v2.0.6-beta12
 	github.com/ocfl-archive/indexer/v3 v3.0.17
@@ -166,7 +166,7 @@ require (
 	golang.org/x/text v0.25.0 // indirect
 	golang.org/x/tools v0.33.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250505200425-f936aa4a68b2 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250512202823-5a2f75b736a9 // indirect
 	gopkg.in/gographics/imagick.v3 v3.7.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

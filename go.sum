@@ -237,10 +237,10 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8m
 github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 h1:zYyBkD/k9seD2A7fsi6Oo2LfFZAehjjQMERAvZLEDnQ=
 github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646/go.mod h1:jpp1/29i3P1S/RLdc7JQKbRpFeM1dOBd8T9ki5s+AY8=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
-github.com/ocfl-archive/dlza-manager v1.0.0-beta9 h1:9dz2zZ27LJsmFr+PAANJaTmooEhzVtiG1oPDrY7TaPg=
-github.com/ocfl-archive/dlza-manager v1.0.0-beta9/go.mod h1:HNhklzYXMaczGD12XTyEtmFPa5LPyvYfNs14W26x+0Y=
-github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta8 h1:undZiIEobEMaWYrYwsAt/0MoQp37eYKGI0GtTfXXb3w=
-github.com/ocfl-archive/dlza-manager-handler v1.0.0-beta8/go.mod h1:obDFBGlbQPlYfOa8ehO/1BT7A62D6sLdrpza+KXaaJU=
+github.com/ocfl-archive/dlza-manager v1.0.1 h1:nSpiFWgxR64Ch6CYIsN7lUoGXyQwVfun38iW6ADHOqA=
+github.com/ocfl-archive/dlza-manager v1.0.1/go.mod h1:rjotQW2TAOBDs7bJZGDoBAiaDHamBxifdaIFTMiP5Rg=
+github.com/ocfl-archive/dlza-manager-handler v1.0.1 h1:yRwOkKBuOsYLSwHv+2Yobw7WjOjNokpVmjn6czs7V7Q=
+github.com/ocfl-archive/dlza-manager-handler v1.0.1/go.mod h1:rDF3HClRzKAOlNMdywwMb/PPhGraH+7y205tQ9/L1a8=
 github.com/ocfl-archive/error v1.0.5 h1:nPidx9HBSiViSDZHfVY8nIabBeOSO5vLFOcUMgt7yLo=
 github.com/ocfl-archive/error v1.0.5/go.mod h1:vOwIAdG34QlD9ExXUXu8QSywUKIIMN31ykQ2U0LvOMs=
 github.com/ocfl-archive/gocfl/v2 v2.0.6-beta12 h1:TI+lu3vOXH62T0Thpr5zbEAVMNyHYgwUskHWq/FVaAw=
@@ -465,8 +465,8 @@ golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7/go.mod h1:I/5z698sn9Ka8T
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 google.golang.org/appengine v1.6.8 h1:IhEN5q69dyKagZPYMSdIjS2HqprW324FRQZJcGqPAsM=
 google.golang.org/appengine v1.6.8/go.mod h1:1jJ3jBArFh5pcgW8gCtRJnepW8FzD1V44FJffLiz/Ds=
-google.golang.org/genproto/googleapis/rpc v0.0.0-20250505200425-f936aa4a68b2 h1:IqsN8hx+lWLqlN+Sc3DoMy/watjofWiU8sRFgQ8fhKM=
-google.golang.org/genproto/googleapis/rpc v0.0.0-20250505200425-f936aa4a68b2/go.mod h1:qQ0YXyHHx3XkvlzUtpXDkS29lDSafHMZBAZDc03LQ3A=
+google.golang.org/genproto/googleapis/rpc v0.0.0-20250512202823-5a2f75b736a9 h1:IkAfh6J/yllPtpYFU0zZN1hUPYdT0ogkBT/9hMxHjvg=
+google.golang.org/genproto/googleapis/rpc v0.0.0-20250512202823-5a2f75b736a9/go.mod h1:qQ0YXyHHx3XkvlzUtpXDkS29lDSafHMZBAZDc03LQ3A=
 google.golang.org/grpc v1.72.1 h1:HR03wO6eyZ7lknl75XlxABNVLLFc2PAb6mHlYh756mA=
 google.golang.org/grpc v1.72.1/go.mod h1:wH5Aktxcg25y1I3w7H69nHfXdOG3UiadoBtjh3izSDM=
 google.golang.org/protobuf v1.26.0-rc.1/go.mod h1:jlhhOSvTdKEhbULTjvd4ARK9grFBp09yW+WbY/TyQbw=
