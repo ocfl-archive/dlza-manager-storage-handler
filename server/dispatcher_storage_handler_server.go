@@ -9,6 +9,7 @@ import (
 	storageHandlerPb "github.com/ocfl-archive/dlza-manager-storage-handler/storagehandlerproto"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"io"
 	"io/fs"
 )
@@ -73,4 +74,8 @@ func (d *DispatcherStorageHandlerServer) CopyArchiveTo(ctx context.Context, copy
 	}
 
 	return &pb.NoParam{}, nil
+}
+
+func (d *DispatcherStorageHandlerServer) ConnectionCheck(ctx context.Context, empty *emptypb.Empty) (*pb.Id, error) {
+	return &pb.Id{Id: "Storage Handler -> Dispatcher connection checked"}, nil
 }

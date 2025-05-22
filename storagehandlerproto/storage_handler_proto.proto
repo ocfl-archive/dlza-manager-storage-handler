@@ -20,7 +20,7 @@ service ClerkStorageHandlerService {
 }
 
 service DispatcherStorageHandlerService {
-  rpc Ping(google.protobuf.Empty) returns (genericproto.DefaultResponse) {}
+  rpc ConnectionCheck(google.protobuf.Empty) returns (dlzamanagerproto.Id) {}
   rpc CopyArchiveTo(dlzamanagerproto.CopyFromTo) returns (dlzamanagerproto.NoParam) {};
 }
 
