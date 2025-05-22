@@ -115,15 +115,15 @@ var ClerkStorageHandlerService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	DispatcherStorageHandlerService_Ping_FullMethodName          = "/storagehandlerproto.DispatcherStorageHandlerService/Ping"
-	DispatcherStorageHandlerService_CopyArchiveTo_FullMethodName = "/storagehandlerproto.DispatcherStorageHandlerService/CopyArchiveTo"
+	DispatcherStorageHandlerService_ConnectionCheck_FullMethodName = "/storagehandlerproto.DispatcherStorageHandlerService/ConnectionCheck"
+	DispatcherStorageHandlerService_CopyArchiveTo_FullMethodName   = "/storagehandlerproto.DispatcherStorageHandlerService/CopyArchiveTo"
 )
 
 // DispatcherStorageHandlerServiceClient is the client API for DispatcherStorageHandlerService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DispatcherStorageHandlerServiceClient interface {
-	Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*proto.DefaultResponse, error)
+	ConnectionCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*dlzamanagerproto.Id, error)
 	CopyArchiveTo(ctx context.Context, in *dlzamanagerproto.CopyFromTo, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error)
 }
 
@@ -135,9 +135,9 @@ func NewDispatcherStorageHandlerServiceClient(cc grpc.ClientConnInterface) Dispa
 	return &dispatcherStorageHandlerServiceClient{cc}
 }
 
-func (c *dispatcherStorageHandlerServiceClient) Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*proto.DefaultResponse, error) {
-	out := new(proto.DefaultResponse)
-	err := c.cc.Invoke(ctx, DispatcherStorageHandlerService_Ping_FullMethodName, in, out, opts...)
+func (c *dispatcherStorageHandlerServiceClient) ConnectionCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*dlzamanagerproto.Id, error) {
+	out := new(dlzamanagerproto.Id)
+	err := c.cc.Invoke(ctx, DispatcherStorageHandlerService_ConnectionCheck_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func (c *dispatcherStorageHandlerServiceClient) CopyArchiveTo(ctx context.Contex
 // All implementations must embed UnimplementedDispatcherStorageHandlerServiceServer
 // for forward compatibility
 type DispatcherStorageHandlerServiceServer interface {
-	Ping(context.Context, *emptypb.Empty) (*proto.DefaultResponse, error)
+	ConnectionCheck(context.Context, *emptypb.Empty) (*dlzamanagerproto.Id, error)
 	CopyArchiveTo(context.Context, *dlzamanagerproto.CopyFromTo) (*dlzamanagerproto.NoParam, error)
 	mustEmbedUnimplementedDispatcherStorageHandlerServiceServer()
 }
@@ -166,8 +166,8 @@ type DispatcherStorageHandlerServiceServer interface {
 type UnimplementedDispatcherStorageHandlerServiceServer struct {
 }
 
-func (UnimplementedDispatcherStorageHandlerServiceServer) Ping(context.Context, *emptypb.Empty) (*proto.DefaultResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+func (UnimplementedDispatcherStorageHandlerServiceServer) ConnectionCheck(context.Context, *emptypb.Empty) (*dlzamanagerproto.Id, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConnectionCheck not implemented")
 }
 func (UnimplementedDispatcherStorageHandlerServiceServer) CopyArchiveTo(context.Context, *dlzamanagerproto.CopyFromTo) (*dlzamanagerproto.NoParam, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CopyArchiveTo not implemented")
@@ -186,20 +186,20 @@ func RegisterDispatcherStorageHandlerServiceServer(s grpc.ServiceRegistrar, srv 
 	s.RegisterService(&DispatcherStorageHandlerService_ServiceDesc, srv)
 }
 
-func _DispatcherStorageHandlerService_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _DispatcherStorageHandlerService_ConnectionCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DispatcherStorageHandlerServiceServer).Ping(ctx, in)
+		return srv.(DispatcherStorageHandlerServiceServer).ConnectionCheck(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: DispatcherStorageHandlerService_Ping_FullMethodName,
+		FullMethod: DispatcherStorageHandlerService_ConnectionCheck_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DispatcherStorageHandlerServiceServer).Ping(ctx, req.(*emptypb.Empty))
+		return srv.(DispatcherStorageHandlerServiceServer).ConnectionCheck(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -230,8 +230,8 @@ var DispatcherStorageHandlerService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*DispatcherStorageHandlerServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Ping",
-			Handler:    _DispatcherStorageHandlerService_Ping_Handler,
+			MethodName: "ConnectionCheck",
+			Handler:    _DispatcherStorageHandlerService_ConnectionCheck_Handler,
 		},
 		{
 			MethodName: "CopyArchiveTo",
