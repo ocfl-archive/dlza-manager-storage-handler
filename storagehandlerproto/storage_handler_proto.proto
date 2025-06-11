@@ -16,7 +16,7 @@ import "dlza_proto.proto";
 import "defaultResponse.proto";
 
 service ClerkStorageHandlerService {
-  rpc CreateStoragePartition(dlzamanagerproto.StoragePartition) returns (dlzamanagerproto.Status) {};
+  rpc CreateFolder(dlzamanagerproto.Id) returns (dlzamanagerproto.NoParam) {};
 }
 
 service DispatcherStorageHandlerService {

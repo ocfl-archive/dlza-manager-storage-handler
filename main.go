@@ -232,6 +232,7 @@ func main() {
 
 	storagehandlerproto.RegisterDispatcherStorageHandlerServiceServer(grpcServer, &server.DispatcherStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger, Vfs: vfs})
 	storagehandlerproto.RegisterCheckerStorageHandlerServiceServer(grpcServer, &server.CheckerStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger, Vfs: vfs})
+	storagehandlerproto.RegisterClerkStorageHandlerServiceServer(grpcServer, &server.ClerkStorageHandlerServer{Vfs: vfs})
 
 	uploaderService := service2.UploaderService{StorageHandlerHandlerServiceClient: clientStorageHandlerHandler, Logger: &logger, Vfs: vfs, ConfigObj: *conf}
 	ctx := context.Background()
