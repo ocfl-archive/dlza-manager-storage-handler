@@ -13,23 +13,31 @@ import (
 	"github.com/ocfl-archive/dlza-manager-storage-handler/models"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 	"io"
 	"io/fs"
+	"path"
 )
 
 func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServiceClient, ctx context.Context, objectWithCollectionAliasAndPathAndFiles *pb.IncomingOrder, vfs fs.FS, logger zLogger.ZLogger) (*pb.Status, error) {
 
 	storageLocations, err := clientStorageHandlerHandler.GetStorageLocationsByCollectionAlias(ctx, &pb.CollectionAlias{CollectionAlias: objectWithCollectionAliasAndPathAndFiles.CollectionAlias})
-
 	if err != nil {
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot get storageLocations for collection: %v", objectWithCollectionAliasAndPathAndFiles.CollectionAlias)
+		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot get storageLocations for collection: %s", objectWithCollectionAliasAndPathAndFiles.CollectionAlias)
 	}
-
+	if len(storageLocations.StorageLocations) < 1 {
+		return &pb.Status{Ok: false}, errors.Wrapf(err, "there is no storage locations for collection with alias: %s", objectWithCollectionAliasAndPathAndFiles.CollectionAlias)
+	}
 	var storageLocation *pb.StorageLocation
 	for _, storageLocationItem := range storageLocations.StorageLocations {
 		if storageLocationItem.FillFirst {
 			storageLocation = storageLocationItem
+			break
 		}
+	}
+	if storageLocation == nil {
+		storageLocation = storageLocations.StorageLocations[0]
 	}
 
 	storagePartition, err := clientStorageHandlerHandler.GetStoragePartitionForLocation(ctx, &pb.SizeAndId{Size: objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Size, Id: storageLocation.Id, Object: objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object})
@@ -38,22 +46,21 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 	}
 
 	connection := models.Connection{}
-	err = json.Unmarshal([]byte(storageLocation.Connection), &connection)
-	if err != nil {
+	if err = json.Unmarshal([]byte(storageLocation.Connection), &connection); err != nil {
 		return &pb.Status{Ok: false}, errors.Wrapf(err, "error mapping storageLocation json for storageLocation ID: %v", storageLocation.Id)
 	}
 
-	path := connection.Folder + storagePartition.Alias + "/" + objectWithCollectionAliasAndPathAndFiles.FileName
+	pathString := path.Join(connection.Folder, storagePartition.Alias, objectWithCollectionAliasAndPathAndFiles.FileName)
 
-	objectInstance := &pb.ObjectInstance{Path: path, Status: "new", StoragePartitionId: storagePartition.Id, Size: objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Size}
+	objectInstance := &pb.ObjectInstance{Path: pathString, Status: "new", StoragePartitionId: storagePartition.Id, Size: objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Size}
 	storagePartition.CurrentSize += objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Size
 	storagePartition.CurrentObjects++
 
 	stream, err := clientStorageHandlerHandler.SaveAllTableObjectsAfterCopyingStream(ctx)
-
 	if err != nil {
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot SaveAllTableObjectsAfterCopying for collection with alias: %v and path: %v", objectWithCollectionAliasAndPathAndFiles.CollectionAlias, path)
+		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot SaveAllTableObjectsAfterCopying for collection with alias: %v and path: %v", objectWithCollectionAliasAndPathAndFiles.CollectionAlias, pathString)
 	}
+
 	instanceWithPartitionAndObjectWithFile := &pb.InstanceWithPartitionAndObjectWithFile{}
 	if objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Binary {
 		instanceWithPartitionAndObjectWithFile.Object = objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object
@@ -94,9 +101,9 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 			}
 		}()
 
-		targetFP, err := writefs.Create(vfs, path)
+		targetFP, err := writefs.Create(vfs, pathString)
 		if err != nil {
-			return errors.Wrapf(err, "cannot create file '%s%s': %v", vfs, path, err)
+			return errors.Wrapf(err, "cannot create file '%s%s': %v", vfs, pathString, err)
 		}
 		defer func() {
 			if err := targetFP.Close(); err != nil {
@@ -108,7 +115,7 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 			targetFP,
 		)
 		if err != nil {
-			return errors.Wrapf(err, "cannot create checksum writer for file '%s%s': %v", vfs, path, err)
+			return errors.Wrapf(err, "cannot create checksum writer for file '%s%s': %v", vfs, pathString, err)
 		}
 
 		_size, err := io.Copy(csWriter, sourceFP)
@@ -164,7 +171,8 @@ func DeleteTemporaryFiles(filePath string, cfg config.Config, logger zLogger.ZLo
 
 	if err := writefs.Remove(vfs, filePath); err != nil {
 		logger.Error().Msgf("error deleting file to '%s': %v", filePath, err)
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "error writing file to '%s': %v", filePath, err)
+
+		return &pb.Status{Ok: false}, grpcstatus.Errorf(codes.Internal, "error writing file to '%s': %v", filePath, err)
 	}
 
 	return &pb.Status{Ok: true}, nil
