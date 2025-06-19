@@ -53,8 +53,6 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 	pathString := path.Join(connection.Folder, storagePartition.Alias, objectWithCollectionAliasAndPathAndFiles.FileName)
 
 	objectInstance := &pb.ObjectInstance{Path: pathString, Status: "new", StoragePartitionId: storagePartition.Id, Size: objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Size}
-	storagePartition.CurrentSize += objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Size
-	storagePartition.CurrentObjects++
 
 	stream, err := clientStorageHandlerHandler.SaveAllTableObjectsAfterCopyingStream(ctx)
 	if err != nil {
