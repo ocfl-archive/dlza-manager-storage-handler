@@ -47,7 +47,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -265,6 +264,21 @@ func main() {
 		BasePath:              "/files/",
 		StoreComposer:         composer,
 		NotifyCompleteUploads: true,
+		PreUploadCreateCallback: func(hook tusd.HookEvent) (tusd.HTTPResponse, tusd.FileInfoChanges, error) {
+			var resp = tusd.HTTPResponse{
+				StatusCode: 0,
+				Body:       "",
+				Header:     nil,
+			}
+			filename, _ := hook.Upload.MetaData["filename"]
+			var fic = tusd.FileInfoChanges{
+				ID:       filename,
+				MetaData: map[string]string{"dlza": filename},
+				Storage:  map[string]string{},
+			}
+			fic.Storage["Path"] = filename
+			return resp, fic, nil
+		},
 	})
 	if err != nil {
 		panic(fmt.Errorf("unable to create handler: %s", err))
@@ -280,24 +294,35 @@ func main() {
 			case event := <-handler.CompleteUploads:
 				fmt.Printf("Upload %s finished\n", event.Upload.ID)
 				basePathString := conf.S3TempStorage.UploadFolder + "/" + conf.S3TempStorage.Bucket + "/"
-				uploadId := strings.Split(event.Upload.ID, separator)[0]
 				filename := event.HTTPRequest.Header.Get("FileName")
 				objectJson := event.HTTPRequest.Header.Get("ObjectJson")
 				collection := event.HTTPRequest.Header.Get("Collection")
 				statusId := event.HTTPRequest.Header.Get("StatusId")
+				severalObjects := event.HTTPRequest.Header.Get("SeveralObjects")
 				_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "copied to temp storage"})
 				if err != nil {
 					log.Printf("could not AlterStatus with status id %s:  to copied to temp storage", statusId)
 				}
-				objectAndFiles, err := uploaderService.CreateObjectAndFiles(uploadId, objectJson, collection, *conf, ErrorFactory)
+				if severalObjects == "0" {
+					continue
+				}
+				objectAndFiles, err := uploaderService.CreateObjectAndFiles(filename, objectJson, collection, basePathString, severalObjects, *conf, ErrorFactory)
 				if err != nil {
-					log.Printf("could not CreateObjectAndFiles for upload id %s: %v", event.Upload.ID, err)
+					_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
+					if err != nil {
+						log.Printf("could not AlterStatus with status id %s: to error", statusId)
+					}
+					log.Printf("could not CreateObjectAndFiles for file %s: %v", filename, err)
 				} else {
 					order := &pb.IncomingOrder{CollectionAlias: collection, StatusId: statusId,
-						FilePath: basePathString + uploadId, ObjectAndFiles: objectAndFiles, FileName: filename}
+						FilePath: basePathString + filename, ObjectAndFiles: objectAndFiles, FileName: filename}
 					err = uploaderService.CopyFiles(order)
 					if err != nil {
-						log.Printf("could not copy file with upload id %s:", event.Upload.ID)
+						_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
+						if err != nil {
+							log.Printf("could not AlterStatus with status id %s: to error", statusId)
+						}
+						log.Printf("could not copy file  %s:", filename)
 					}
 				}
 			case event := <-handler.CreatedUploads:

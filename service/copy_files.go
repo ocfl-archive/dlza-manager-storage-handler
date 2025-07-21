@@ -169,8 +169,7 @@ func DeleteTemporaryFiles(filePath string, cfg config.Config, logger zLogger.ZLo
 
 	if err := writefs.Remove(vfs, filePath); err != nil {
 		logger.Error().Msgf("error deleting file to '%s': %v", filePath, err)
-
-		return &pb.Status{Ok: false}, grpcstatus.Errorf(codes.Internal, "error writing file to '%s': %v", filePath, err)
+		return &pb.Status{Ok: false}, grpcstatus.Errorf(codes.Internal, "error deleting file '%s': %v", filePath, err)
 	}
 
 	return &pb.Status{Ok: true}, nil
