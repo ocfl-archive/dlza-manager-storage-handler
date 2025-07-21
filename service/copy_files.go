@@ -93,7 +93,6 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 				logger.Error().Msgf("cannot close source: %v", err)
 			}
 		}()
-
 		targetFP, err := writefs.Create(vfs, path)
 		if err != nil {
 			return errors.Wrapf(err, "cannot create file '%s%s': %v", vfs, path, err)
@@ -163,8 +162,8 @@ func DeleteTemporaryFiles(filePath string, cfg config.Config, logger zLogger.ZLo
 	}
 
 	if err := writefs.Remove(vfs, filePath); err != nil {
-		logger.Error().Msgf("error deleting file to '%s': %v", filePath, err)
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "error writing file to '%s': %v", filePath, err)
+		logger.Error().Msgf("error deleting file '%s': %v", filePath, err)
+		return &pb.Status{Ok: false}, errors.Wrapf(err, "error deleting file to '%s': %v", filePath, err)
 	}
 
 	return &pb.Status{Ok: true}, nil
