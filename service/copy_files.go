@@ -17,7 +17,7 @@ import (
 	"io/fs"
 )
 
-func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServiceClient, ctx context.Context, objectWithCollectionAliasAndPathAndFiles *pb.IncomingOrder, vfs fs.FS, logger zLogger.ZLogger) (*pb.Status, error) {
+func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServiceClient, ctx context.Context, objectWithCollectionAliasAndPathAndFiles *pb.IncomingOrder, severalObjects string, vfs fs.FS, logger zLogger.ZLogger) (*pb.Status, error) {
 
 	storageLocations, err := clientStorageHandlerHandler.GetStorageLocationsByCollectionAlias(ctx, &pb.CollectionAlias{CollectionAlias: objectWithCollectionAliasAndPathAndFiles.CollectionAlias})
 
@@ -55,7 +55,7 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot SaveAllTableObjectsAfterCopying for collection with alias: %v and path: %v", objectWithCollectionAliasAndPathAndFiles.CollectionAlias, path)
 	}
 	instanceWithPartitionAndObjectWithFile := &pb.InstanceWithPartitionAndObjectWithFile{}
-	if objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Binary {
+	if objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Binary && severalObjects != "1" { // only if json does not contain files. "1" means that it contains
 		instanceWithPartitionAndObjectWithFile.Object = objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object
 		instanceWithPartitionAndObjectWithFile.StoragePartition = storagePartition
 		instanceWithPartitionAndObjectWithFile.ObjectInstance = objectInstance

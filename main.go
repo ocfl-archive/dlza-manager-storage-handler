@@ -315,7 +315,7 @@ func main() {
 				} else {
 					order := &pb.IncomingOrder{CollectionAlias: collection, StatusId: statusId,
 						FilePath: basePathString + filename, ObjectAndFiles: objectAndFiles, FileName: filename}
-					err = uploaderService.CopyFiles(order)
+					err = uploaderService.CopyFiles(order, severalObjects)
 					if err != nil {
 						_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
 						if err != nil {
