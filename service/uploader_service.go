@@ -66,7 +66,7 @@ func (u *UploaderService) CopyFiles(order *pb.IncomingOrder) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot set status to copy file for collection '%s'", order.CollectionAlias)
 	}
-	_, err = DeleteTemporaryFiles(order.FilePath, u.ConfigObj, *u.Logger)
+	_, err = DeleteTemporaryFiles(order.FilePath, u.Vfs, *u.Logger)
 	if err != nil {
 		return errors.Wrapf(err, "cannot delete temporary files for collection '%s'", order.CollectionAlias)
 	}

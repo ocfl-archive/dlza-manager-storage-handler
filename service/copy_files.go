@@ -153,14 +153,7 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 	return &pb.Status{Ok: true}, nil
 }
 
-func DeleteTemporaryFiles(filePath string, cfg config.Config, logger zLogger.ZLogger) (*pb.Status, error) {
-	tempVfsMap := getVfsTempMap(cfg)
-	vfs, err := vfsrw.NewFS(tempVfsMap, logger)
-	if err != nil {
-		logger.Error().Msgf("cannot create vfs: %v", err)
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot create vfs: %v", err)
-	}
-
+func DeleteTemporaryFiles(filePath string, vfs fs.FS, logger zLogger.ZLogger) (*pb.Status, error) {
 	if err := writefs.Remove(vfs, filePath); err != nil {
 		logger.Error().Msgf("error deleting file '%s': %v", filePath, err)
 		return &pb.Status{Ok: false}, errors.Wrapf(err, "error deleting file to '%s': %v", filePath, err)
