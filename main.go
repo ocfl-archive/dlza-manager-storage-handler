@@ -270,7 +270,7 @@ func main() {
 				Body:       "",
 				Header:     nil,
 			}
-			filename, _ := hook.Upload.MetaData["filename"]
+			filename := hook.HTTPRequest.Header.Get("FileName")
 			var fic = tusd.FileInfoChanges{
 				ID:       filename,
 				MetaData: map[string]string{"dlza": filename},
