@@ -49,7 +49,7 @@ func (u *UploaderService) TenantHasAccess(key string, collection string) (bool, 
 	return status.Ok, nil
 }
 
-func (u *UploaderService) CopyFiles(order *pb.IncomingOrder) error {
+func (u *UploaderService) CopyFiles(order *pb.IncomingOrder, severalObjects string) error {
 	c := context.Background()
 	ctx, cancel := context.WithTimeout(c, 10000*time.Second)
 	defer cancel()
@@ -57,7 +57,7 @@ func (u *UploaderService) CopyFiles(order *pb.IncomingOrder) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot set status to copy file for collection '%s'", order.CollectionAlias)
 	}
-	_, err = CopyFiles(u.StorageHandlerHandlerServiceClient, ctx, order, u.Vfs, *u.Logger)
+	_, err = CopyFiles(u.StorageHandlerHandlerServiceClient, ctx, order, severalObjects, u.Vfs, *u.Logger)
 	if err != nil {
 		return errors.Wrapf(err, "cannot copy file for collection '%s'", order.CollectionAlias)
 	}
