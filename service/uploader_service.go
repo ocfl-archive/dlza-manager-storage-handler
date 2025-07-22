@@ -18,7 +18,11 @@ import (
 	"github.com/ocfl-archive/gocfl/v2/gocfl/cmd"
 	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
 	"github.com/ocfl-archive/indexer/v3/pkg/indexer"
+	"io"
 	"io/fs"
+	"path"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -45,7 +49,7 @@ func (u *UploaderService) TenantHasAccess(key string, collection string) (bool, 
 	return status.Ok, nil
 }
 
-func (u *UploaderService) CopyFiles(order *pb.IncomingOrder) error {
+func (u *UploaderService) CopyFiles(order *pb.IncomingOrder, severalObjects string) error {
 	c := context.Background()
 	ctx, cancel := context.WithTimeout(c, 10000*time.Second)
 	defer cancel()
@@ -53,7 +57,7 @@ func (u *UploaderService) CopyFiles(order *pb.IncomingOrder) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot set status to copy file for collection '%s'", order.CollectionAlias)
 	}
-	_, err = CopyFiles(u.StorageHandlerHandlerServiceClient, ctx, order, u.Vfs, *u.Logger)
+	_, err = CopyFiles(u.StorageHandlerHandlerServiceClient, ctx, order, severalObjects, u.Vfs, *u.Logger)
 	if err != nil {
 		return errors.Wrapf(err, "cannot copy file for collection '%s'", order.CollectionAlias)
 	}
@@ -62,7 +66,7 @@ func (u *UploaderService) CopyFiles(order *pb.IncomingOrder) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot set status to copy file for collection '%s'", order.CollectionAlias)
 	}
-	_, err = DeleteTemporaryFiles(order.FilePath, u.ConfigObj, *u.Logger)
+	_, err = DeleteTemporaryFiles(order.FilePath, u.Vfs, *u.Logger)
 	if err != nil {
 		return errors.Wrapf(err, "cannot delete temporary files for collection '%s'", order.CollectionAlias)
 	}
@@ -70,11 +74,11 @@ func (u *UploaderService) CopyFiles(order *pb.IncomingOrder) error {
 	return nil
 }
 
-func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson string, collectionAlias string, confObj config.Config, errorFactory *archiveerror.Factory) (*pb.ObjectAndFiles, error) {
+func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson string, collectionAlias string, basePathString string, severalObjects string, confObj config.Config, errorFactory *archiveerror.Factory) (*pb.ObjectAndFiles, error) {
 	object := models.Object{}
 	err := json.Unmarshal([]byte(objectJson), &object)
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot unmarshal object: %v", objectJson)
+		return nil, errors.Wrapf(err, "cannot unmarshal object: %s", objectJson)
 	}
 	var fileObjects []*pb.File
 	head := "v1"
@@ -82,7 +86,12 @@ func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson strin
 	if !object.Binary {
 		fileObjects, head, versions, err = extractMetadata(tusePath, confObj, *u.Logger, errorFactory)
 		if err != nil {
-			return nil, errors.Wrapf(err, "cannot ExtractMetadata for: %v", tusePath)
+			return nil, errors.Wrapf(err, "cannot ExtractMetadata for: %s", tusePath)
+		}
+	} else if severalObjects == "1" { // if object has index 1, which means it is the second object and first was json file with files, with same name but json extension
+		fileObjects, err = GetFilesFromGocflObject(tusePath, basePathString, u.Vfs, *u.Logger)
+		if err != nil {
+			return nil, errors.Wrapf(err, "cannot GetFilesFromGocflObject for: %s", tusePath)
 		}
 	}
 	object.Head = head
@@ -119,7 +128,6 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 	*/
 
 	ocflFS, err := fsFactory.Get("arn:cache:s3:::"+conf.S3TempStorage.Bucket+"/"+tusFileName, true)
-
 	if err != nil {
 		logger.Error().Msgf("cannot get filesystem for file '%s': %v", tusFileName, err)
 		logger.Debug().Msgf("%v%+v", err, ocfl.GetErrorStacktrace(err))
@@ -210,4 +218,69 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 		return nil, "", "", errors.New("No files were extracted")
 	}
 	return files, head, string(versionsJson), nil
+}
+
+func GetFilesFromGocflObject(tusFileName string, basePathString string, vfs fs.FS, logger zLogger.ZLogger) ([]*pb.File, error) {
+	objectOcfl := ocfl.StorageRootMetadata{}
+	object := &ocfl.ObjectMetadata{}
+	pathTus := path.Join(basePathString, strings.TrimSuffix(tusFileName, filepath.Ext(tusFileName))+".json")
+	sourceFP, err := vfs.Open(pathTus)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := sourceFP.Close(); err != nil {
+			logger.Error().Msgf("cannot close source: %v", err)
+		}
+	}()
+	jsonObject, err := io.ReadAll(sourceFP)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(jsonObject, &objectOcfl)
+	if err != nil {
+		logger.Error().Msgf(err.Error())
+		return nil, err
+	}
+	for _, mapItem := range objectOcfl.Objects {
+		object = mapItem
+	}
+	filesRetrieved := object.Files
+	head := object.Head
+
+	files := make([]*pb.File, 0)
+	for _, fileRetr := range filesRetrieved {
+		file := pb.File{}
+		file.Name = fileRetr.VersionName[head]
+
+		if fileRetr.Extension["NNNN-indexer"] != nil {
+			extensions := fileRetr.Extension["NNNN-indexer"].(map[string]any)
+
+			file.Pronom = extensions["pronom"].(string)
+			if file.Pronom == "" {
+				file.Pronom = defaultPronom
+			}
+			if extensions["size"] != nil {
+				file.Size = int64(extensions["size"].(float64))
+			}
+			if extensions["duration"] != nil {
+				file.Duration = int64(extensions["duration"].(float64))
+			}
+			if extensions["width"] != nil {
+				file.Width = int64(extensions["width"].(float64))
+			}
+			if extensions["height"] != nil {
+				file.Height = int64(extensions["height"].(float64))
+			}
+			file.MimeType = extensions["mimetype"].(string)
+			if file.MimeType == "" {
+				file.MimeType = defaultMimeType
+			}
+		} else {
+			file.MimeType = defaultMimeType
+			file.Pronom = defaultPronom
+		}
+		files = append(files, &file)
+	}
+	return files, nil
 }

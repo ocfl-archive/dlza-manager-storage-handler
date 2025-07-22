@@ -17,7 +17,7 @@ import (
 	"io/fs"
 )
 
-func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServiceClient, ctx context.Context, objectWithCollectionAliasAndPathAndFiles *pb.IncomingOrder, vfs fs.FS, logger zLogger.ZLogger) (*pb.Status, error) {
+func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServiceClient, ctx context.Context, objectWithCollectionAliasAndPathAndFiles *pb.IncomingOrder, severalObjects string, vfs fs.FS, logger zLogger.ZLogger) (*pb.Status, error) {
 
 	storageLocations, err := clientStorageHandlerHandler.GetStorageLocationsByCollectionAlias(ctx, &pb.CollectionAlias{CollectionAlias: objectWithCollectionAliasAndPathAndFiles.CollectionAlias})
 
@@ -55,7 +55,7 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot SaveAllTableObjectsAfterCopying for collection with alias: %v and path: %v", objectWithCollectionAliasAndPathAndFiles.CollectionAlias, path)
 	}
 	instanceWithPartitionAndObjectWithFile := &pb.InstanceWithPartitionAndObjectWithFile{}
-	if objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Binary {
+	if objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Binary && severalObjects != "1" { // only if json does not contain files. "1" means that it contains
 		instanceWithPartitionAndObjectWithFile.Object = objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object
 		instanceWithPartitionAndObjectWithFile.StoragePartition = storagePartition
 		instanceWithPartitionAndObjectWithFile.ObjectInstance = objectInstance
@@ -93,7 +93,6 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 				logger.Error().Msgf("cannot close source: %v", err)
 			}
 		}()
-
 		targetFP, err := writefs.Create(vfs, path)
 		if err != nil {
 			return errors.Wrapf(err, "cannot create file '%s%s': %v", vfs, path, err)
@@ -154,17 +153,10 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 	return &pb.Status{Ok: true}, nil
 }
 
-func DeleteTemporaryFiles(filePath string, cfg config.Config, logger zLogger.ZLogger) (*pb.Status, error) {
-	tempVfsMap := getVfsTempMap(cfg)
-	vfs, err := vfsrw.NewFS(tempVfsMap, logger)
-	if err != nil {
-		logger.Error().Msgf("cannot create vfs: %v", err)
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot create vfs: %v", err)
-	}
-
+func DeleteTemporaryFiles(filePath string, vfs fs.FS, logger zLogger.ZLogger) (*pb.Status, error) {
 	if err := writefs.Remove(vfs, filePath); err != nil {
-		logger.Error().Msgf("error deleting file to '%s': %v", filePath, err)
-		return &pb.Status{Ok: false}, errors.Wrapf(err, "error writing file to '%s': %v", filePath, err)
+		logger.Error().Msgf("error deleting file '%s': %v", filePath, err)
+		return &pb.Status{Ok: false}, errors.Wrapf(err, "error deleting file to '%s': %v", filePath, err)
 	}
 
 	return &pb.Status{Ok: true}, nil
