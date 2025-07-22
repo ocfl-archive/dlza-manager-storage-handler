@@ -239,7 +239,7 @@ func GetFilesFromGocflObject(tusFileName string, basePathString string, vfs fs.F
 	}
 	err = json.Unmarshal(jsonObject, &objectOcfl)
 	if err != nil {
-		logger.Error().Msgf(err.Error())
+		logger.Error().Msgf("cannot Unmarshal jsonObject: %v", err)
 		return nil, err
 	}
 	for _, mapItem := range objectOcfl.Objects {
