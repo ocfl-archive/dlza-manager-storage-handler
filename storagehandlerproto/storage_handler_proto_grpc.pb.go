@@ -24,14 +24,14 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ClerkStorageHandlerService_CreateStoragePartition_FullMethodName = "/storagehandlerproto.ClerkStorageHandlerService/CreateStoragePartition"
+	ClerkStorageHandlerService_CreateFolder_FullMethodName = "/storagehandlerproto.ClerkStorageHandlerService/CreateFolder"
 )
 
 // ClerkStorageHandlerServiceClient is the client API for ClerkStorageHandlerService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ClerkStorageHandlerServiceClient interface {
-	CreateStoragePartition(ctx context.Context, in *dlzamanagerproto.StoragePartition, opts ...grpc.CallOption) (*dlzamanagerproto.Status, error)
+	CreateFolder(ctx context.Context, in *dlzamanagerproto.Id, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error)
 }
 
 type clerkStorageHandlerServiceClient struct {
@@ -42,9 +42,9 @@ func NewClerkStorageHandlerServiceClient(cc grpc.ClientConnInterface) ClerkStora
 	return &clerkStorageHandlerServiceClient{cc}
 }
 
-func (c *clerkStorageHandlerServiceClient) CreateStoragePartition(ctx context.Context, in *dlzamanagerproto.StoragePartition, opts ...grpc.CallOption) (*dlzamanagerproto.Status, error) {
-	out := new(dlzamanagerproto.Status)
-	err := c.cc.Invoke(ctx, ClerkStorageHandlerService_CreateStoragePartition_FullMethodName, in, out, opts...)
+func (c *clerkStorageHandlerServiceClient) CreateFolder(ctx context.Context, in *dlzamanagerproto.Id, opts ...grpc.CallOption) (*dlzamanagerproto.NoParam, error) {
+	out := new(dlzamanagerproto.NoParam)
+	err := c.cc.Invoke(ctx, ClerkStorageHandlerService_CreateFolder_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (c *clerkStorageHandlerServiceClient) CreateStoragePartition(ctx context.Co
 // All implementations must embed UnimplementedClerkStorageHandlerServiceServer
 // for forward compatibility
 type ClerkStorageHandlerServiceServer interface {
-	CreateStoragePartition(context.Context, *dlzamanagerproto.StoragePartition) (*dlzamanagerproto.Status, error)
+	CreateFolder(context.Context, *dlzamanagerproto.Id) (*dlzamanagerproto.NoParam, error)
 	mustEmbedUnimplementedClerkStorageHandlerServiceServer()
 }
 
@@ -63,8 +63,8 @@ type ClerkStorageHandlerServiceServer interface {
 type UnimplementedClerkStorageHandlerServiceServer struct {
 }
 
-func (UnimplementedClerkStorageHandlerServiceServer) CreateStoragePartition(context.Context, *dlzamanagerproto.StoragePartition) (*dlzamanagerproto.Status, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateStoragePartition not implemented")
+func (UnimplementedClerkStorageHandlerServiceServer) CreateFolder(context.Context, *dlzamanagerproto.Id) (*dlzamanagerproto.NoParam, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateFolder not implemented")
 }
 func (UnimplementedClerkStorageHandlerServiceServer) mustEmbedUnimplementedClerkStorageHandlerServiceServer() {
 }
@@ -80,20 +80,20 @@ func RegisterClerkStorageHandlerServiceServer(s grpc.ServiceRegistrar, srv Clerk
 	s.RegisterService(&ClerkStorageHandlerService_ServiceDesc, srv)
 }
 
-func _ClerkStorageHandlerService_CreateStoragePartition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(dlzamanagerproto.StoragePartition)
+func _ClerkStorageHandlerService_CreateFolder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(dlzamanagerproto.Id)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClerkStorageHandlerServiceServer).CreateStoragePartition(ctx, in)
+		return srv.(ClerkStorageHandlerServiceServer).CreateFolder(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ClerkStorageHandlerService_CreateStoragePartition_FullMethodName,
+		FullMethod: ClerkStorageHandlerService_CreateFolder_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClerkStorageHandlerServiceServer).CreateStoragePartition(ctx, req.(*dlzamanagerproto.StoragePartition))
+		return srv.(ClerkStorageHandlerServiceServer).CreateFolder(ctx, req.(*dlzamanagerproto.Id))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -106,8 +106,8 @@ var ClerkStorageHandlerService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ClerkStorageHandlerServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "CreateStoragePartition",
-			Handler:    _ClerkStorageHandlerService_CreateStoragePartition_Handler,
+			MethodName: "CreateFolder",
+			Handler:    _ClerkStorageHandlerService_CreateFolder_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
