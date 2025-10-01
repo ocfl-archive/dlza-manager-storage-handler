@@ -6,31 +6,31 @@ require (
 	emperror.dev/emperror v0.33.0
 	emperror.dev/errors v0.8.1
 	github.com/BurntSushi/toml v1.5.0
-	github.com/aws/aws-sdk-go-v2/config v1.29.14
-	github.com/aws/aws-sdk-go-v2/credentials v1.17.67
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.79.3
-	github.com/aws/smithy-go v1.22.3
-	github.com/gin-contrib/cors v1.7.5
-	github.com/gin-gonic/gin v1.10.0
-	github.com/je4/filesystem/v3 v3.0.29
-	github.com/je4/trustutil/v2 v2.0.30
+	github.com/aws/aws-sdk-go-v2/config v1.31.12
+	github.com/aws/aws-sdk-go-v2/credentials v1.18.16
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.88.3
+	github.com/aws/smithy-go v1.23.0
+	github.com/gin-contrib/cors v1.7.6
+	github.com/gin-gonic/gin v1.11.0
+	github.com/je4/filesystem/v3 v3.0.34
+	github.com/je4/trustutil/v2 v2.0.31
 	github.com/je4/utils/v2 v2.0.60
-	github.com/ocfl-archive/dlza-manager v1.0.1
-	github.com/ocfl-archive/dlza-manager-handler v1.0.1
+	github.com/ocfl-archive/dlza-manager v1.0.2
+	github.com/ocfl-archive/dlza-manager-handler v1.0.2
 	github.com/ocfl-archive/error v1.0.5
 	github.com/ocfl-archive/gocfl/v2 v2.0.6-beta12
-	github.com/ocfl-archive/indexer/v3 v3.0.17
+	github.com/ocfl-archive/indexer/v3 v3.0.20
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.34.0
 	github.com/tus/tusd/v2 v2.8.0
 	gitlab.switch.ch/ub-unibas/go-ublogger/v2 v2.0.2-0.20250331093945-4f0f0ce8c72d
-	go.ub.unibas.ch/cloud/certloader/v2 v2.0.18
+	go.ub.unibas.ch/cloud/certloader/v2 v2.0.22
 	go.ub.unibas.ch/cloud/genericproto/v2 v2.0.4
-	go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.33
-	golang.org/x/net v0.40.0
-	google.golang.org/grpc v1.72.1
-	google.golang.org/protobuf v1.36.6
+	go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.50
+	golang.org/x/net v0.44.0
+	google.golang.org/grpc v1.75.1
+	google.golang.org/protobuf v1.36.9
 )
 
 require (
@@ -80,7 +80,6 @@ require (
 	github.com/go-openapi/jsonpointer v0.22.1 // indirect
 	github.com/go-openapi/jsonreference v0.21.2 // indirect
 	github.com/go-openapi/spec v0.22.0 // indirect
-	github.com/go-openapi/swag v0.25.1 // indirect
 	github.com/go-openapi/swag/conv v0.25.1 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.1 // indirect
 	github.com/go-openapi/swag/jsonutils v0.25.1 // indirect
@@ -100,7 +99,6 @@ require (
 	github.com/google/certificate-transparency-go v1.3.2 // indirect
 	github.com/google/flatbuffers v25.9.23+incompatible // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/google/tink/go v1.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/handlers v1.5.2 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
@@ -109,13 +107,11 @@ require (
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/je4/goffmpeg v0.0.0-20220114092308-33ab9986404d // indirect
-	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
-	github.com/mailru/easyjson v0.9.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
@@ -190,5 +186,4 @@ require (
 	gopkg.in/gographics/imagick.v3 v3.7.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/klog/v2 v2.130.1 // indirect
 )
