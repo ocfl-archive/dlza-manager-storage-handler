@@ -15,8 +15,8 @@ require (
 	github.com/je4/filesystem/v3 v3.0.34
 	github.com/je4/trustutil/v2 v2.0.31
 	github.com/je4/utils/v2 v2.0.60
-	github.com/ocfl-archive/dlza-manager v1.0.2
-	github.com/ocfl-archive/dlza-manager-handler v1.0.2
+	github.com/ocfl-archive/dlza-manager v1.0.3
+	github.com/ocfl-archive/dlza-manager-handler v1.0.3
 	github.com/ocfl-archive/error v1.0.5
 	github.com/ocfl-archive/gocfl/v2 v2.0.6-beta12
 	github.com/ocfl-archive/indexer/v3 v3.0.20
@@ -27,10 +27,10 @@ require (
 	gitlab.switch.ch/ub-unibas/go-ublogger/v2 v2.0.2-0.20250331093945-4f0f0ce8c72d
 	go.ub.unibas.ch/cloud/certloader/v2 v2.0.22
 	go.ub.unibas.ch/cloud/genericproto/v2 v2.0.4
-	go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.50
+	go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.51
 	golang.org/x/net v0.44.0
 	google.golang.org/grpc v1.75.1
-	google.golang.org/protobuf v1.36.9
+	google.golang.org/protobuf v1.36.10
 )
 
 require (
@@ -174,7 +174,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.21.0 // indirect
 	golang.org/x/crypto v0.42.0 // indirect
-	golang.org/x/exp v0.0.0-20250911091902-df9299821621 // indirect
+	golang.org/x/exp v0.0.0-20251002181428-27f1f14c8bb9 // indirect
 	golang.org/x/image v0.31.0 // indirect
 	golang.org/x/mod v0.28.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
@@ -182,7 +182,7 @@ require (
 	golang.org/x/text v0.29.0 // indirect
 	golang.org/x/tools v0.37.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250929231259-57b25ae835d4 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251002232023-7c0ddcbb5797 // indirect
 	gopkg.in/gographics/imagick.v3 v3.7.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
