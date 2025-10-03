@@ -5384,12 +5384,12 @@ github.com/nsf/jsondiff v0.0.0-20230430225905-43f6cf3098c1 h1:dOYG7LS/WK00RWZc8X
 github.com/nsf/jsondiff v0.0.0-20230430225905-43f6cf3098c1/go.mod h1:mpRZBD8SJ55OIICQ3iWH0Yz3cjzA61JdqMLoWXeB2+8=
 github.com/ocfl-archive/dlza-manager v0.0.8 h1:Hg3JsKcw3WNqHCINoGZovHmnZ0+/sicusrXyFjUfGlw=
 github.com/ocfl-archive/dlza-manager v0.0.8/go.mod h1:UYjAQu+LGnr46fpDuaUvXkROOyiwzDThsi2wegPjJzI=
-github.com/ocfl-archive/dlza-manager v1.0.3 h1:mJAd+cNXQGpfJwMk0XGPxj4zvGSPaDEyoAnVAoC7Jlk=
-github.com/ocfl-archive/dlza-manager v1.0.3/go.mod h1:U1bNXfukQg3LSW4m68BcYmi2oJIUUlXFePMVYBZqm4g=
+github.com/ocfl-archive/dlza-manager v1.0.3-beta1 h1:DSxdgcDG6shfCTR1QsPXbtGsf9fNRMQQQuXbN0KY7OA=
+github.com/ocfl-archive/dlza-manager v1.0.3-beta1/go.mod h1:U1bNXfukQg3LSW4m68BcYmi2oJIUUlXFePMVYBZqm4g=
 github.com/ocfl-archive/dlza-manager-handler v0.0.8 h1:2hgpdvamBcCl6HUzv5Wb/cuS32eTGmP7M7/b8E4pLoE=
 github.com/ocfl-archive/dlza-manager-handler v0.0.8/go.mod h1:arkqy9TosckbjoWcnKYG+EUKUd8p999IRC96XFrVgRk=
-github.com/ocfl-archive/dlza-manager-handler v1.0.3 h1:Q92fQILH2LS4EyCr7RDbBKrffkB6IGK2zZ6asAjiDco=
-github.com/ocfl-archive/dlza-manager-handler v1.0.3/go.mod h1:XphAOSaHtGh7g+a1QYHiK5uYAxZEeQFV3GxtKtUUBZ4=
+github.com/ocfl-archive/dlza-manager-handler v1.0.3-beta1 h1:O3wr+TDzWQXi1YRx5f2idyvi8gGMpLKHL1JNwI0LTDY=
+github.com/ocfl-archive/dlza-manager-handler v1.0.3-beta1/go.mod h1:+aGISH3Oc0q1qMG2nedRFco9SMusiUm4L2GKpat7yGc=
 github.com/ocfl-archive/error v1.0.1 h1:XP+awJu6lGYU69VH/q/NGbtBG50dvO96ifTpxrD/uJo=
 github.com/ocfl-archive/error v1.0.1/go.mod h1:Epq35buaUI7vh7Q6As4mRsaHibhEPf25Z4XT/DO+xD4=
 github.com/ocfl-archive/gocfl/v2 v2.0.6-beta1 h1:048OPJF+NTWWS7tSuJcC74FL24pz8Xkkm1tHayHvDs0=
@@ -6621,8 +6621,6 @@ go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.34 h1:jlatm1d7zg0Yl32NWK1UbURRlgxyATh
 go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.34/go.mod h1:iHwzguKQ9DTlNFJ2iwtFHDTSR+XK/Rx1p8ETw35YB8E=
 go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.42 h1:GzepMVpqQDNkBTwNV8s2YJxC7HARUOi6yCiFemvdyrg=
 go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.42/go.mod h1:RbijcnLsc39acUYli5QP3A8Uobg0UoIyOSfPgUsoQbs=
-go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.51 h1:URKN4q6yAcPgSy9lGeBlHlpsh140J+nFHIo9P999Bsc=
-go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.51/go.mod h1:rq7c5LyRh2kjqebh3zng40/XKBpTZR8h4LOt9KHyZQs=
 go.ub.unibas.ch/cloud/minivault/v2 v2.0.2/go.mod h1:F12KAOmhB8JnOOp2OfXaF/Ox1TsBD81DEoQz6TA3xHI=
 go.ub.unibas.ch/cloud/minivault/v2 v2.0.5/go.mod h1:qqS7nGPg3rJ+0OYwxbYQTBuU/3taNxCQYX/Xsv6Q4yc=
 go.ub.unibas.ch/cloud/minivault/v2 v2.0.15/go.mod h1:H7V/kE/qCWhhsjo+SqE+DnMutodmUESJhld6huO4oW0=
@@ -6793,8 +6791,6 @@ golang.org/x/exp v0.0.0-20250305212735-054e65f0b394/go.mod h1:sIifuuw/Yco/y6yb6+
 golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b/go.mod h1:3//PLf8L/X+8b4vuAfHzxeRUl04Adcb341+IGKfnqS8=
 golang.org/x/exp v0.0.0-20250718183923-645b1fa84792/go.mod h1:A+z0yzpGtvnG90cToK5n2tu8UJVP2XUATh+r+sfOOOc=
 golang.org/x/exp v0.0.0-20250813145105-42675adae3e6/go.mod h1:4QTo5u+SEIbbKW1RacMZq1YEfOBqeXa19JeshGi+zc4=
-golang.org/x/exp v0.0.0-20251002181428-27f1f14c8bb9 h1:TQwNpfvNkxAVlItJf6Cr5JTsVZoC/Sj7K3OZv2Pc14A=
-golang.org/x/exp v0.0.0-20251002181428-27f1f14c8bb9/go.mod h1:TwQYMMnGpvZyc+JpB/UAuTNIsVJifOlSkrZkhcvpVUk=
 golang.org/x/image v0.0.0-20180708004352-c73c2afc3b81/go.mod h1:ux5Hcp/YLpHSI86hEcLt0YII63i6oz57MZXIpbrjZUs=
 golang.org/x/image v0.0.0-20190227222117-0694c2d4d067/go.mod h1:kZ7UVZpmo3dzQBMxlp+ypCbDeSB+sBbTgSJuh5dn5js=
 golang.org/x/image v0.0.0-20190802002840-cff245a6509b h1:+qEpEAPhDZ1o0x3tHzZTQDArnOixOzGD9HUJfcg0mb4=
@@ -7861,8 +7857,6 @@ google.golang.org/genproto/googleapis/rpc v0.0.0-20250707201910-8d1bb00bc6a7/go.
 google.golang.org/genproto/googleapis/rpc v0.0.0-20250728155136-f173205681a0/go.mod h1:qQ0YXyHHx3XkvlzUtpXDkS29lDSafHMZBAZDc03LQ3A=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20250804133106-a7a43d27e69b/go.mod h1:qQ0YXyHHx3XkvlzUtpXDkS29lDSafHMZBAZDc03LQ3A=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20250811230008-5f3141c8851a/go.mod h1:gw1tLEfykwDz2ET4a12jcXt4couGAm7IwsVaTy0Sflo=
-google.golang.org/genproto/googleapis/rpc v0.0.0-20251002232023-7c0ddcbb5797 h1:CirRxTOwnRWVLKzDNrs0CXAaVozJoR4G9xvdRecrdpk=
-google.golang.org/genproto/googleapis/rpc v0.0.0-20251002232023-7c0ddcbb5797/go.mod h1:HSkG/KdJWusxU1F6CNrwNDjBMgisKxGnc5dAZfT0mjQ=
 google.golang.org/grpc v1.8.0/go.mod h1:yo6s7OP7yaDglbqo1J04qKzAhqBH6lvTonzMVmEdcZw=
 google.golang.org/grpc v1.14.0/go.mod h1:yo6s7OP7yaDglbqo1J04qKzAhqBH6lvTonzMVmEdcZw=
 google.golang.org/grpc v1.16.0/go.mod h1:0JHn/cJsOMiMfNA9+DeHDlAU7KAAB5GDlYFpa9MZMio=
@@ -7983,8 +7977,6 @@ google.golang.org/protobuf v1.36.4/go.mod h1:9fA7Ob0pmnwhb644+1+CVWFRbNajQ6iRojt
 google.golang.org/protobuf v1.36.5/go.mod h1:9fA7Ob0pmnwhb644+1+CVWFRbNajQ6iRojtC/QF5bRE=
 google.golang.org/protobuf v1.36.7/go.mod h1:jduwjTPXsFjZGTmRluh+L6NjiWu7pchiJ2/5YcXBHnY=
 google.golang.org/protobuf v1.36.8/go.mod h1:fuxRtAxBytpl4zzqUh6/eyUujkJdNiuEkXntxiD/uRU=
-google.golang.org/protobuf v1.36.10 h1:AYd7cD/uASjIL6Q9LiTjz8JLcrh/88q5UObnmY3aOOE=
-google.golang.org/protobuf v1.36.10/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
 gopkg.in/DataDog/dd-trace-go.v1 v1.27.1 h1:9BJfwtuCUrUiNB3WCTXHuaP5E/J/zfMPUUaRJoEQfdc=
 gopkg.in/DataDog/dd-trace-go.v1 v1.27.1/go.mod h1:Sp1lku8WJMvNV0kjDI4Ni/T7J/U3BO5ct5kEaoVU8+I=
 gopkg.in/DataDog/dd-trace-go.v1 v1.47.0 h1:w3mHEgOR1o52mkyCbkTM+El8DG732+Fnug4FAGhIpsk=

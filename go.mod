@@ -15,8 +15,8 @@ require (
 	github.com/je4/filesystem/v3 v3.0.34
 	github.com/je4/trustutil/v2 v2.0.31
 	github.com/je4/utils/v2 v2.0.60
-	github.com/ocfl-archive/dlza-manager v1.0.3
-	github.com/ocfl-archive/dlza-manager-handler v1.0.3
+	github.com/ocfl-archive/dlza-manager v1.0.3-beta1
+	github.com/ocfl-archive/dlza-manager-handler v1.0.3-beta1
 	github.com/ocfl-archive/error v1.0.5
 	github.com/ocfl-archive/gocfl/v2 v2.0.6-beta12
 	github.com/ocfl-archive/indexer/v3 v3.0.20
