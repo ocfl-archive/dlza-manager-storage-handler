@@ -248,10 +248,10 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8m
 github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 h1:zYyBkD/k9seD2A7fsi6Oo2LfFZAehjjQMERAvZLEDnQ=
 github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646/go.mod h1:jpp1/29i3P1S/RLdc7JQKbRpFeM1dOBd8T9ki5s+AY8=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
-github.com/ocfl-archive/dlza-manager v1.0.3 h1:mJAd+cNXQGpfJwMk0XGPxj4zvGSPaDEyoAnVAoC7Jlk=
-github.com/ocfl-archive/dlza-manager v1.0.3/go.mod h1:U1bNXfukQg3LSW4m68BcYmi2oJIUUlXFePMVYBZqm4g=
-github.com/ocfl-archive/dlza-manager-handler v1.0.3 h1:Q92fQILH2LS4EyCr7RDbBKrffkB6IGK2zZ6asAjiDco=
-github.com/ocfl-archive/dlza-manager-handler v1.0.3/go.mod h1:XphAOSaHtGh7g+a1QYHiK5uYAxZEeQFV3GxtKtUUBZ4=
+github.com/ocfl-archive/dlza-manager v1.0.3-beta1 h1:DSxdgcDG6shfCTR1QsPXbtGsf9fNRMQQQuXbN0KY7OA=
+github.com/ocfl-archive/dlza-manager v1.0.3-beta1/go.mod h1:U1bNXfukQg3LSW4m68BcYmi2oJIUUlXFePMVYBZqm4g=
+github.com/ocfl-archive/dlza-manager-handler v1.0.3-beta1 h1:O3wr+TDzWQXi1YRx5f2idyvi8gGMpLKHL1JNwI0LTDY=
+github.com/ocfl-archive/dlza-manager-handler v1.0.3-beta1/go.mod h1:+aGISH3Oc0q1qMG2nedRFco9SMusiUm4L2GKpat7yGc=
 github.com/ocfl-archive/error v1.0.5 h1:nPidx9HBSiViSDZHfVY8nIabBeOSO5vLFOcUMgt7yLo=
 github.com/ocfl-archive/error v1.0.5/go.mod h1:vOwIAdG34QlD9ExXUXu8QSywUKIIMN31ykQ2U0LvOMs=
 github.com/ocfl-archive/gocfl/v2 v2.0.6-beta12 h1:TI+lu3vOXH62T0Thpr5zbEAVMNyHYgwUskHWq/FVaAw=
