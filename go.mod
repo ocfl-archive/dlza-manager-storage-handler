@@ -6,20 +6,20 @@ require (
 	emperror.dev/emperror v0.33.0
 	emperror.dev/errors v0.8.1
 	github.com/BurntSushi/toml v1.5.0
-	github.com/aws/aws-sdk-go-v2/config v1.31.12
-	github.com/aws/aws-sdk-go-v2/credentials v1.18.16
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.88.3
+	github.com/aws/aws-sdk-go-v2/config v1.31.0
+	github.com/aws/aws-sdk-go-v2/credentials v1.18.4
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.79.3
 	github.com/aws/smithy-go v1.23.0
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0
 	github.com/je4/filesystem/v3 v3.0.34
 	github.com/je4/trustutil/v2 v2.0.31
 	github.com/je4/utils/v2 v2.0.60
-	github.com/ocfl-archive/dlza-manager v1.0.3
-	github.com/ocfl-archive/dlza-manager-handler v1.0.3
+	github.com/ocfl-archive/dlza-manager v1.0.5
+	github.com/ocfl-archive/dlza-manager-handler v1.0.4
 	github.com/ocfl-archive/error v1.0.5
 	github.com/ocfl-archive/gocfl/v2 v2.0.6-beta12
-	github.com/ocfl-archive/indexer/v3 v3.0.20
+	github.com/ocfl-archive/indexer/v3 v3.0.17
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.34.0
@@ -27,10 +27,10 @@ require (
 	gitlab.switch.ch/ub-unibas/go-ublogger/v2 v2.0.2-0.20250331093945-4f0f0ce8c72d
 	go.ub.unibas.ch/cloud/certloader/v2 v2.0.22
 	go.ub.unibas.ch/cloud/genericproto/v2 v2.0.4
-	go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.51
+	go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.42
 	golang.org/x/net v0.44.0
-	google.golang.org/grpc v1.75.1
-	google.golang.org/protobuf v1.36.10
+	google.golang.org/grpc v1.74.2
+	google.golang.org/protobuf v1.36.9
 )
 
 require (
