@@ -2,6 +2,9 @@ package server
 
 import (
 	"context"
+	"io"
+	"io/fs"
+
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/checksum"
 	"github.com/je4/utils/v2/pkg/zLogger"
@@ -10,8 +13,6 @@ import (
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"io"
-	"io/fs"
 )
 
 type DispatcherStorageHandlerServer struct {

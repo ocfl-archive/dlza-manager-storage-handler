@@ -1,17 +1,18 @@
 package config
 
 import (
-	"emperror.dev/errors"
 	"encoding/json"
+	"io/fs"
+	"maps"
+	"os"
+
+	"emperror.dev/errors"
 	"github.com/BurntSushi/toml"
 	"github.com/je4/filesystem/v3/pkg/vfsrw"
 	"github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/stashconfig"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
-	"io/fs"
-	"maps"
-	"os"
 )
 
 type Config struct {
@@ -30,6 +31,8 @@ type Config struct {
 	Log                     stashconfig.Config `toml:"log"`
 	S3TempStorage           S3TempStorage      `toml:"s3tempstorage"`
 	TusServer               TusServer          `toml:"tusserver"`
+	Addresses               map[string]string  `toml:"addresses"`
+	NetName                 string             `toml:"netname"`
 }
 
 type S3TempStorage struct {

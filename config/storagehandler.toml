@@ -1,17 +1,16 @@
-#localaddr = ":8789"
 localaddr = ":0"
-#domains = ["ubmedia", "mediathek"]
 domain = "ubdlza"
 bearer = "grmbl"
 resolveraddr = "[::1]:7777"
-#resolveraddr = "127.0.0.1:7777"
 resolvertimeout = "10m"
 actiontimeout = "15m"
 resolvernotfoundtimeout = "10s"
 externaladdr = "https://localhost:8765"
 
-#[grpcclient]
-#mediaserverdb = "localhost:7653"
+netname = "local"
+
+[addresses]
+local = ":0"
 
 [server]
 type = "minivault"

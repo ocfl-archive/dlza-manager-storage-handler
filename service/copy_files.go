@@ -3,6 +3,10 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"io/fs"
+	"path"
+
 	"github.com/je4/filesystem/v3/pkg/vfsrw"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/checksum"
@@ -15,9 +19,6 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	grpcstatus "google.golang.org/grpc/status"
-	"io"
-	"io/fs"
-	"path"
 )
 
 func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServiceClient, ctx context.Context, objectWithCollectionAliasAndPathAndFiles *pb.IncomingOrder, severalObjects string, vfs fs.FS, logger zLogger.ZLogger) (*pb.Status, error) {
@@ -40,7 +41,7 @@ func CopyFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServic
 		storageLocation = storageLocations.StorageLocations[0]
 	}
 
-	storagePartition, err := clientStorageHandlerHandler.GetStoragePartitionForLocation(ctx, &pb.SizeAndId{Size: objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Size, Id: storageLocation.Id, Object: objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object})
+	storagePartition, err := clientStorageHandlerHandler.GetStoragePartitionForLocation(ctx, &pb.SizeObjectLocation{Size: objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object.Size, Location: storageLocation, Object: objectWithCollectionAliasAndPathAndFiles.ObjectAndFiles.Object})
 	if err != nil {
 		return &pb.Status{Ok: false}, errors.Wrapf(err, "cannot get storagePartition for storageLocation: %v", storageLocation.Alias)
 	}
