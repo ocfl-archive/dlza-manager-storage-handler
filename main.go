@@ -6,10 +6,21 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 
-	"emperror.dev/emperror"
-	"emperror.dev/errors"
 	"flag"
 	"fmt"
+	"io"
+	"io/fs"
+	"net/http"
+	"net/url"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"sync"
+	"syscall"
+	"time"
+
+	"emperror.dev/emperror"
+	"emperror.dev/errors"
 	configuration "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -38,19 +49,9 @@ import (
 	"github.com/tus/tusd/v2/pkg/s3store"
 	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger/v2"
 	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
-	"go.ub.unibas.ch/cloud/miniresolver/v2/pkg/resolver"
+	"go.ub.unibas.ch/cloud/miniresolverclient/pkg/miniresolverclient"
 	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"io"
-	"io/fs"
-	"net/http"
-	"net/url"
-	"os"
-	"os/signal"
-	"path/filepath"
-	"sync"
-	"syscall"
-	"time"
 )
 
 const errorTopic string = "dlza-manager-storage-handler"
@@ -186,7 +187,7 @@ func main() {
 	defer serverLoader.Close()
 
 	logger.Info().Msgf("resolver address is %s", conf.ResolverAddr)
-	resolverClient, err := resolver.NewMiniresolverClientNet(conf.ResolverAddr, conf.NetName, conf.GRPCClient, clientTLSConfig, serverTLSConfig, time.Duration(conf.ResolverTimeout), time.Duration(conf.ResolverNotFoundTimeout), logger)
+	resolverClient, err := miniresolverclient.NewMiniresolverClientNet(conf.ResolverAddr, conf.NetName, conf.GRPCClient, clientTLSConfig, serverTLSConfig, time.Duration(conf.ResolverTimeout), time.Duration(conf.ResolverNotFoundTimeout), logger)
 	if err != nil {
 		logger.Fatal().Msgf("cannot create resolver client: %v", err)
 	}
@@ -201,7 +202,7 @@ func main() {
 	l2 = _logger.With().Timestamp().Str("addr", addr).Logger() //.Output(output)
 	logger = &l2
 
-	clientStorageHandlerHandler, err := resolver.NewClient[handlerClientProto.StorageHandlerHandlerServiceClient](
+	clientStorageHandlerHandler, err := miniresolverclient.NewClient[handlerClientProto.StorageHandlerHandlerServiceClient](
 		resolverClient,
 		handlerClientProto.NewStorageHandlerHandlerServiceClient,
 		handlerClientProto.StorageHandlerHandlerService_ServiceDesc.ServiceName, conf.Domain)
