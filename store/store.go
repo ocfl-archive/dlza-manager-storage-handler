@@ -105,7 +105,7 @@ func (s RoutingStore) AsTerminatableUpload(upload handler.Upload) handler.Termin
 func (s RoutingStore) NewUpload(ctx context.Context, info handler.FileInfo) (upload handler.Upload, err error) {
 	store, err := s.storeFromID(info.ID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "storage is not found for id %s", info.ID)
+		return nil, errors.Wrapf(err, "storage %s not found for id %s", info.ID)
 	}
 	ret, err := store.NewUpload(ctx, info)
 	if err != nil {
