@@ -2,9 +2,16 @@ package service
 
 import (
 	"context"
-	"emperror.dev/errors"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/fs"
+	"path"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"emperror.dev/errors"
 	"github.com/je4/filesystem/v3/pkg/s3fsrw"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/filesystem/v3/pkg/zipfs"
@@ -18,12 +25,7 @@ import (
 	"github.com/ocfl-archive/gocfl/v2/gocfl/cmd"
 	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
 	"github.com/ocfl-archive/indexer/v3/pkg/indexer"
-	"io"
-	"io/fs"
-	"path"
-	"path/filepath"
-	"strings"
-	"time"
+	"golang.org/x/exp/maps"
 )
 
 const (
@@ -49,15 +51,11 @@ func (u *UploaderService) TenantHasAccess(key string, collection string) (bool, 
 	return status.Ok, nil
 }
 
-func (u *UploaderService) CopyFiles(order *pb.IncomingOrder, severalObjects string) error {
+func (u *UploaderService) StoringFiles(order *pb.IncomingOrder, partitionId string, severalObjects string) error {
 	c := context.Background()
 	ctx, cancel := context.WithTimeout(c, 10000*time.Second)
 	defer cancel()
-	_, err := u.StorageHandlerHandlerServiceClient.AlterStatus(ctx, &pb.StatusObject{Id: order.StatusId, Status: "archiving"})
-	if err != nil {
-		return errors.Wrapf(err, "cannot set status to copy file for collection '%s'", order.CollectionAlias)
-	}
-	_, err = CopyFiles(u.StorageHandlerHandlerServiceClient, ctx, order, severalObjects, u.Vfs, *u.Logger)
+	_, err := StoringFiles(u.StorageHandlerHandlerServiceClient, ctx, order, partitionId, severalObjects, *u.Logger)
 	if err != nil {
 		return errors.Wrapf(err, "cannot copy file for collection '%s'", order.CollectionAlias)
 	}
@@ -66,7 +64,10 @@ func (u *UploaderService) CopyFiles(order *pb.IncomingOrder, severalObjects stri
 	if err != nil {
 		return errors.Wrapf(err, "cannot set status to copy file for collection '%s'", order.CollectionAlias)
 	}
-	_, err = DeleteTemporaryFiles(order.FilePath, u.Vfs, *u.Logger)
+	basepath, _ := strings.CutSuffix(order.FilePath, order.FileName)
+	nName := strings.TrimSuffix(order.FileName, filepath.Ext(order.FilePath))
+	filePaths := []string{order.FilePath + ".info", basepath + nName + ".json"}
+	_, err = DeleteTemporaryFiles(filePaths, u.Vfs, *u.Logger)
 	if err != nil {
 		return errors.Wrapf(err, "cannot delete temporary files for collection '%s'", order.CollectionAlias)
 	}
@@ -74,17 +75,13 @@ func (u *UploaderService) CopyFiles(order *pb.IncomingOrder, severalObjects stri
 	return nil
 }
 
-func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson string, collectionAlias string, basePathString string, severalObjects string, confObj config.Config, errorFactory *archiveerror.Factory) (*pb.ObjectAndFiles, error) {
-	object := models.Object{}
-	err := json.Unmarshal([]byte(objectJson), &object)
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot unmarshal object: %s", objectJson)
-	}
+func (u *UploaderService) CreateObjectAndFiles(tusePath string, object models.Object, collectionAlias string, basePathString string, severalObjects string, connection models.Connection, confObj config.Config, errorFactory *archiveerror.Factory) (*pb.ObjectAndFiles, error) {
+	var err error
 	var fileObjects []*pb.File
 	head := "v1"
 	versions := "{\"v1\" : {}}"
 	if !object.Binary {
-		fileObjects, head, versions, err = extractMetadata(tusePath, confObj, *u.Logger, errorFactory)
+		fileObjects, head, versions, err = extractMetadata(tusePath, basePathString, connection, *u.Logger, errorFactory)
 		if err != nil {
 			return nil, errors.Wrapf(err, "cannot ExtractMetadata for: %s", tusePath)
 		}
@@ -102,17 +99,18 @@ func (u *UploaderService) CreateObjectAndFiles(tusePath string, objectJson strin
 	return objectAndFiles, nil
 }
 
-func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLogger, errorFactory *archiveerror.Factory) ([]*pb.File, string, string, error) {
+func extractMetadata(tusFileName string, basePath string, connection models.Connection, logger zLogger.ZLogger, errorFactory *archiveerror.Factory) ([]*pb.File, string, string, error) {
 	fsFactory, err := writefs.NewFactory()
 	if err != nil {
 		return nil, "", "", errors.Wrap(err, "cannot create filesystem factory")
 	}
+	bucketName, _ := strings.CutPrefix(basePath, connection.Folder)
 	// arn:cache:s3:zurich:trallala
 	if err := fsFactory.Register(s3fsrw.NewCreateFSFunc(map[string]*s3fsrw.S3Access{
 		"cache": &s3fsrw.S3Access{
-			AccessKey: conf.S3TempStorage.Key,
-			SecretKey: conf.S3TempStorage.Secret,
-			URL:       conf.S3TempStorage.Url,
+			AccessKey: string(maps.Values(connection.VFS)[0].S3.AccessKeyID),
+			SecretKey: string(maps.Values(connection.VFS)[0].S3.SecretAccessKey),
+			URL:       string(maps.Values(connection.VFS)[0].S3.Endpoint),
 			UseSSL:    true,
 		},
 	}, s3fsrw.ARNRegexStr, false, nil, "", "", logger), "^arn:", writefs.LowFS); err != nil {
@@ -127,7 +125,7 @@ func extractMetadata(tusFileName string, conf config.Config, logger zLogger.ZLog
 		}
 	*/
 
-	ocflFS, err := fsFactory.Get("arn:cache:s3:::"+conf.S3TempStorage.Bucket+"/"+tusFileName, true)
+	ocflFS, err := fsFactory.Get("arn:cache:s3:::"+path.Join(bucketName, tusFileName), true)
 	if err != nil {
 		logger.Error().Msgf("cannot get filesystem for file '%s': %v", tusFileName, err)
 		logger.Debug().Msgf("%v%+v", err, ocfl.GetErrorStacktrace(err))
