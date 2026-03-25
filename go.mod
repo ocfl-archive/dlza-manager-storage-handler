@@ -1,6 +1,6 @@
 module github.com/ocfl-archive/dlza-manager-storage-handler
 
-go 1.25.6
+go 1.25.4
 
 require (
 	emperror.dev/emperror v0.33.0

@@ -3,9 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"strings"
 )
 
 type S3Service struct {
@@ -62,14 +61,9 @@ func (s *S3Service) UploadPartCopy(ctx context.Context, input *s3.UploadPartCopy
 }
 
 func trimKey(key *string) *string {
-	formattedKeyArray := strings.Split(*key, "-")
+	formattedKeyArray := strings.Split(*key, "/")
 	if len(formattedKeyArray) == 1 {
 		return key
 	}
-	prefix := ""
-	if strings.Contains(formattedKeyArray[0], "/") {
-		prefix = strings.Split(formattedKeyArray[0], "/")[0] + "/"
-	}
-	res := prefix + formattedKeyArray[len(formattedKeyArray)-1]
-	return &res
+	return &formattedKeyArray[1]
 }
