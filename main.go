@@ -304,7 +304,7 @@ func main() {
 	customStore.UseIn(composer)
 
 	handler, err := tusd.NewHandler(tusd.Config{
-		BasePath:              "/files/",
+		BasePath:              "/files",
 		StoreComposer:         composer,
 		NotifyCompleteUploads: true,
 		PreUploadCreateCallback: func(hook tusd.HookEvent) (tusd.HTTPResponse, tusd.FileInfoChanges, error) {
@@ -517,10 +517,14 @@ func main() {
 	}
 	router := gin.Default()
 	router.Use(corsV, checkAuth)
-	router.POST("/files/", gin.WrapF(handler.PostFile))
-	router.HEAD("/files/:id", gin.WrapF(handler.HeadFile))
-	router.PATCH("/files/:id", gin.WrapF(handler.PatchFile))
-	router.GET("/files/:id", gin.WrapF(handler.GetFile))
+	files := router.Group("/files",
+		func(c *gin.Context) {
+			c.Request.URL.Path = strings.TrimPrefix(c.Request.URL.Path, "/files")
+		})
+	files.POST("/", gin.WrapF(handler.PostFile))
+	files.HEAD("/*id", gin.WrapF(handler.HeadFile))
+	files.PATCH("/*id", gin.WrapF(handler.PatchFile))
+	files.GET("/*id", gin.WrapF(handler.GetFile))
 
 	serverTus := http.Server{
 		Addr:      conf.TusServer.Addr,
