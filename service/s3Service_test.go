@@ -1,9 +1,7 @@
-package tests
+package service
 
 import (
 	"testing"
-
-	"github.com/ocfl-archive/dlza-manager-storage-handler/service"
 )
 
 func sptr(s string) *string { return &s }
@@ -27,7 +25,7 @@ func TestTrimKey(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := service.TrimKey(sptr(tt.in))
+			got := trimKey(sptr(tt.in))
 			if got == nil {
 				t.Fatalf("got nil, want %q", tt.want)
 			}

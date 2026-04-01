@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"regexp"
 	"strings"
 
 	"emperror.dev/errors"
@@ -17,13 +18,32 @@ type RoutingStore struct {
 	logger   zLogger.ZLogger
 }
 
+var storeFromIDUUIDRe = regexp.MustCompile(
+	`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`,
+)
+
 func storeFromID(id string) (string, string) {
-	ret := strings.Split(id, "-")
-	partitionId := strings.Join(ret[1:6], "-")
-	tenantAlias := ret[0]
-	if strings.Contains(tenantAlias, "/") {
-		tenantAlias = strings.Split(tenantAlias, "/")[1]
+	if id == "" {
+		return "", ""
 	}
+
+	loc := storeFromIDUUIDRe.FindStringIndex(id)
+	if loc == nil {
+		return "", ""
+	}
+
+	partitionId := id[loc[0]:loc[1]]
+
+	// Tenant alias is everything right before the UUID (can contain '-') and may be prefixed by a path.
+	tenantPart := id[:loc[0]]
+	if i := strings.LastIndex(tenantPart, "/"); i >= 0 {
+		tenantPart = tenantPart[i+1:]
+	}
+	tenantAlias := strings.TrimSuffix(tenantPart, "-")
+	if tenantAlias == "" {
+		return "", ""
+	}
+
 	return tenantAlias, partitionId
 
 }
