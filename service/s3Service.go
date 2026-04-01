@@ -62,8 +62,8 @@ func (s *S3Service) UploadPartCopy(ctx context.Context, input *s3.UploadPartCopy
 	return s.Client.UploadPartCopy(ctx, input, s.AddDisableEndpointPrefix)
 }
 
-var trimKeyTenantPrefixRe = regexp.MustCompile(
-	`^tenantname-([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})-(.+)$`,
+var trimKeyUUIDRe = regexp.MustCompile(
+	`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`,
 )
 
 func TrimKey(key *string) *string {
@@ -76,16 +76,23 @@ func TrimKey(key *string) *string {
 		return key
 	}
 
+	// Keep only the first path segment, regardless of how deep the input key is.
 	prefix := parts[0]
-	last := parts[len(parts)-1]
 
-	m := trimKeyTenantPrefixRe.FindStringSubmatch(last)
-	if len(m) != 3 {
+	// Extract filename from the last path segment: everything after "<uuid>-"
+	last := parts[len(parts)-1]
+	loc := trimKeyUUIDRe.FindStringIndex(last)
+	if loc == nil {
 		return key
 	}
 
-	trimmedFile := m[2]
-	res := prefix + "/" + trimmedFile
+	uuidEnd := loc[1]
+	if uuidEnd >= len(last) || last[uuidEnd] != '-' || uuidEnd+1 >= len(last) {
+		return key
+	}
+
+	filename := last[uuidEnd+1:]
+	res := prefix + "/" + filename
 	return &res
 
 }
