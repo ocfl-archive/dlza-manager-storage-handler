@@ -21,7 +21,6 @@ import (
 	"syscall"
 	"time"
 
-	"emperror.dev/emperror"
 	"emperror.dev/errors"
 	configuration "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -117,6 +116,15 @@ func (sl storeList) String() string {
 	return str
 }
 
+func (sl storeList) Get(tenant, store string) (s3store.S3Store, error) {
+	if tenantStores, ok := sl[tenant]; ok {
+		if store, ok := tenantStores[store]; ok {
+			return store, nil
+		}
+	}
+	return s3store.S3Store{}, fmt.Errorf("store %s not found for tenant %s", store, tenant)
+}
+
 func main() {
 	flag.Parse()
 
@@ -131,73 +139,45 @@ func main() {
 	}
 
 	conf = &config.Config{
-		LocalAddr: "localhost:8443",
-		//ResolverTimeout: config.Duration(10 * time.Minute),
+		LocalAddr:               "localhost:8443",
 		ExternalAddr:            "https://localhost:8443",
 		ResolverTimeout:         configutil.Duration(10 * time.Minute),
 		ResolverNotFoundTimeout: configutil.Duration(10 * time.Second),
-		ServerTLS: &loader.Config{
-			Type: "DEV",
-		},
-		ClientTLS: &loader.Config{
-			Type: "DEV",
-		},
+		ServerTLS:               &loader.Config{Type: "DEV"},
+		ClientTLS:               &loader.Config{Type: "DEV"},
 	}
 	if err := config.LoadConfig(cfgFS, cfgFile, conf); err != nil {
 		log.Err(err).Msgf("cannot load toml from [%v] %s: %v", cfgFS, cfgFile, err)
 	}
 	configErrorFactory()
 
-	// create logger instance
 	hostname, err := os.Hostname()
 	if err != nil {
-		log.Err(err).Msgf("cannot get hostname: %v", err)
+		log.Fatal().Err(err).Msg("cannot get hostname")
 	}
 
-	var loggerTLSConfig *tls.Config
-	var loggerLoader io.Closer
-	if conf.Log.Stash.TLS != nil {
-		loggerTLSConfig, loggerLoader, err = loader.CreateClientLoader(conf.Log.Stash.TLS, nil)
-		if err != nil {
-			log.Err(err).Msgf("cannot create client loader: %v", err)
-		}
-		defer loggerLoader.Close()
-	}
-
-	_logger, _logstash, _logfile, err := ublogger.CreateUbMultiLoggerTLS(conf.Log.Level, conf.Log.File,
-		ublogger.SetDataset(conf.Log.Stash.Dataset),
-		ublogger.SetLogStash(conf.Log.Stash.LogstashHost, conf.Log.Stash.LogstashPort, conf.Log.Stash.Namespace, conf.Log.Stash.LogstashTraceLevel),
-		ublogger.SetTLS(conf.Log.Stash.TLS != nil),
-		ublogger.SetTLSConfig(loggerTLSConfig),
-	)
+	logger, closers, err := setupLogger(conf, hostname)
 	if err != nil {
-		log.Err(err).Msgf("cannot create logger: %v", err)
+		log.Fatal().Err(err).Msg("cannot setup logger")
 	}
-	if _logstash != nil {
-		defer _logstash.Close()
+	for _, c := range closers {
+		defer c.Close()
 	}
-
-	if _logfile != nil {
-		defer _logfile.Close()
-	}
-
-	l2 := _logger.With().Timestamp().Str("host", hostname).Logger() //.Output(output)
-	var logger zLogger.ZLogger = &l2
 
 	clientTLSConfig, clientLoader, err := loader.CreateClientLoader(conf.ClientTLS, logger)
 	if err != nil {
-		logger.Panic().Msgf("cannot create client loader: %v", err)
+		logger.Fatal().Err(err).Msg("cannot create client loader")
 	}
 	defer clientLoader.Close()
-
-	// create TLS Certificate.
-	// the certificate MUST contain <package>.<service> as DNS name
 
 	var domainPrefix string
 	if conf.Domain != "" {
 		domainPrefix = conf.Domain + "."
 	}
-	certutil.AddDefaultDNSNames(domainPrefix+storagehandlerproto.DispatcherStorageHandlerService_ServiceDesc.ServiceName, domainPrefix+storagehandlerproto.ClerkStorageHandlerService_ServiceDesc.ServiceName)
+	certutil.AddDefaultDNSNames(
+		domainPrefix+storagehandlerproto.DispatcherStorageHandlerService_ServiceDesc.ServiceName,
+		domainPrefix+storagehandlerproto.ClerkStorageHandlerService_ServiceDesc.ServiceName,
+	)
 
 	serverTLSConfig, serverLoader, err := loader.CreateServerLoader(true, conf.ServerTLS, nil, logger)
 	if err != nil {
@@ -205,356 +185,160 @@ func main() {
 	}
 	defer serverLoader.Close()
 
-	logger.Info().Msgf("resolver address is %s", conf.ResolverAddr)
-	resolverClient, err := miniresolverclient.NewMiniresolverClientNet(conf.ResolverAddr, conf.NetName, conf.GRPCClient, clientTLSConfig, serverTLSConfig, time.Duration(conf.ResolverTimeout), time.Duration(conf.ResolverNotFoundTimeout), logger)
+	resolverClient, err := miniresolverclient.NewMiniresolverClientNet(
+		conf.ResolverAddr, conf.NetName, conf.GRPCClient, clientTLSConfig, serverTLSConfig,
+		time.Duration(conf.ResolverTimeout), time.Duration(conf.ResolverNotFoundTimeout), logger)
 	if err != nil {
-		logger.Fatal().Msgf("cannot create resolver client: %v", err)
+		logger.Fatal().Err(err).Msg("cannot create resolver client")
 	}
 	defer resolverClient.Close()
 
-	// create grpc server with resolver for name resolution
 	grpcServer, err := resolverClient.NewServerAddresses(conf.LocalAddr, conf.Addresses, []string{conf.Domain}, true)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("cannot create server")
 	}
-	addr := grpcServer.GetAddr()
-	l2 = _logger.With().Timestamp().Str("addr", addr).Logger() //.Output(output)
-	logger = &l2
+	logger.Info().Msgf("Server address: %s", grpcServer.GetAddr())
 
 	clientStorageHandlerHandler, err := miniresolverclient.NewClient[handlerClientProto.StorageHandlerHandlerServiceClient](
 		resolverClient,
 		handlerClientProto.NewStorageHandlerHandlerServiceClient,
 		handlerClientProto.StorageHandlerHandlerService_ServiceDesc.ServiceName, conf.Domain)
 	if err != nil {
-		logger.Panic().Msgf("cannot create clientStorageHandlerHandler grpc client: %v", err)
+		logger.Fatal().Err(err).Msg("cannot create gRPC client")
 	}
 
-	storageLocations, err := clientStorageHandlerHandler.GetAllStorageLocations(context.Background(), &emptypb.Empty{})
+	ctx := context.Background()
+	storageLocations, err := clientStorageHandlerHandler.GetAllStorageLocations(ctx, &emptypb.Empty{})
 	if err != nil {
-		logger.Panic().Msgf("cannot GetAllStorageLocations: %v", err)
+		logger.Fatal().Err(err).Msg("cannot GetAllStorageLocations")
 	}
 
 	vfsConfig, err := config.LoadVfsConfig(storageLocations, *conf)
 	if err != nil {
-		logger.Panic().Msgf("error mapping json for storage location connection field: %v", err)
+		logger.Fatal().Err(err).Msg("error loading VFS config")
 	}
 
-	vfs, err := vfsrw.NewFS(vfsConfig, &l2)
+	vfs, err := vfsrw.NewFS(vfsConfig, logger)
 	if err != nil {
-		logger.Panic().Err(err).Msg("cannot create vfs")
+		logger.Fatal().Err(err).Msg("cannot create vfs")
 	}
-
-	defer func() {
-		if err := vfs.Close(); err != nil {
-			logger.Error().Err(err).Msg("cannot close vfs")
-		}
-	}()
+	defer vfs.Close()
 
 	storagehandlerproto.RegisterDispatcherStorageHandlerServiceServer(grpcServer, &server.DispatcherStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger, Vfs: vfs})
 	storagehandlerproto.RegisterCheckerStorageHandlerServiceServer(grpcServer, &server.CheckerStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger, Vfs: vfs})
 	storagehandlerproto.RegisterClerkStorageHandlerServiceServer(grpcServer, &server.ClerkStorageHandlerServer{Vfs: vfs})
 
-	uploaderService := service2.UploaderService{StorageHandlerHandlerServiceClient: clientStorageHandlerHandler, Logger: &logger, Vfs: vfs, ConfigObj: *conf}
-	ctx := context.Background()
-	cs := cache.New(60*time.Minute, 60*time.Minute)
+	uploaderService := service2.UploaderService{
+		StorageHandlerHandlerServiceClient: clientStorageHandlerHandler,
+		Logger:                             &logger,
+		Vfs:                                vfs,
+		ConfigObj:                          *conf,
+	}
 
-	// Create a new S3 SDK client instance.
 	composer := tusd.NewStoreComposer()
-
-	tenants, err := clientStorageHandlerHandler.FindAllTenants(ctx, &pb.NoParam{})
+	stores, err = initS3Stores(ctx, clientStorageHandlerHandler, storageLocations, logger)
 	if err != nil {
-		logger.Error().Msgf("cannot get tenants: %v", err)
+		logger.Fatal().Err(err).Msg("cannot init S3 stores")
 	}
 
-	stores = make(storeList)
-
-	for _, tenant := range tenants.Tenants {
-		storesForPartitions := make(map[string]s3store.S3Store)
-		for _, storageLocation := range storageLocations.StorageLocations {
-			if storageLocation.FillFirst {
-				if tenant.Id == storageLocation.TenantId {
-					connection := models.Connection{}
-					if err = json.Unmarshal([]byte(storageLocation.Connection), &connection); err != nil {
-						logger.Panic().Msgf("error mapping storageLocation json for storageLocation ID: %v", storageLocation.Id)
-					}
-					credentialsS3It := credentials.NewStaticCredentialsProvider(string(maps.Values(connection.VFS)[0].S3.AccessKeyID), string(maps.Values(connection.VFS)[0].S3.SecretAccessKey), "")
-					cnfIt, err := configuration.LoadDefaultConfig(
-						ctx,
-						configuration.WithCredentialsProvider(credentialsS3It),
-						configuration.WithRegion("us-east-1"),
-						//configuration.WithRequestChecksumCalculation(0),
-						//configuration.WithResponseChecksumValidation(0),
-					)
-					if err != nil {
-						logger.Panic().Err(err).Msg(err.Error())
-					}
-					svcIt := s3.NewFromConfig(cnfIt, func(o *s3.Options) {
-						o.EndpointResolverV2 = staticResolver{url: "https://" + string(maps.Values(connection.VFS)[0].S3.Endpoint)}
-					})
-					partitions, err := clientStorageHandlerHandler.GetStoragePartitionsByStorageLocationId(ctx, &pb.Id{Id: storageLocation.Id})
-					if err != nil {
-						logger.Error().Msgf("cannot get storage partitions: %v", err)
-					}
-					for _, partition := range partitions.StoragePartitions {
-						alias := strings.Split(partition.Alias, "/")
-						s3StoreIt := s3store.New(alias[0], &service.S3Service{Client: svcIt, AddDisableEndpointPrefix: addDisableEndpointPrefix})
-						s3StoreIt.ObjectPrefix = alias[1] + "/"
-						storesForPartitions[partition.Id] = s3StoreIt
-					}
-				}
-			}
-		}
-		stores[tenant.Alias] = storesForPartitions
-	}
 	storeFunc := func(tenantAlias string, partitionId string) (s3store.S3Store, bool) {
-		storeIt, ok := stores[tenantAlias][partitionId]
-		if !ok {
-			return s3store.S3Store{}, ok
-		}
-		return storeIt, ok
+		s, ok := stores[tenantAlias][partitionId]
+		return s, ok
 	}
-	customStore := store.NewRoutingStore(storeFunc)
-	customStore.UseIn(composer)
+	store.NewRoutingStore(storeFunc).UseIn(composer)
 
-	handler, err := tusd.NewHandler(tusd.Config{
+	tusHandler, err := tusd.NewHandler(tusd.Config{
 		BasePath:              "/files",
 		StoreComposer:         composer,
 		NotifyCompleteUploads: true,
 		PreUploadCreateCallback: func(hook tusd.HookEvent) (tusd.HTTPResponse, tusd.FileInfoChanges, error) {
-			var resp = tusd.HTTPResponse{
-				StatusCode: 0,
-				Body:       "",
-				Header:     nil,
-			}
 			filename := hook.HTTPRequest.Header.Get("FileName")
 			collectionAlias := hook.HTTPRequest.Header.Get("Collection")
 			partitionId := hook.HTTPRequest.Header.Get("PartitionId")
 			tenant, err := clientStorageHandlerHandler.FindTenantByCollectionAlias(context.Background(), &pb.Id{Id: collectionAlias})
 			if err != nil {
-				logger.Error().Msgf("cannot get tenant name: %v", err)
-				return tusd.HTTPResponse{StatusCode: 404, Header: map[string]string{}, Body: err.Error()}, tusd.FileInfoChanges{}, err
+				return tusd.HTTPResponse{StatusCode: 404, Body: err.Error()}, tusd.FileInfoChanges{}, err
 			}
-			filenameWithTenant := fmt.Sprintf("%s-%s-%s", tenant.Alias, partitionId, filename)
-			var fic = tusd.FileInfoChanges{
-				ID:       filenameWithTenant,
+			return tusd.HTTPResponse{StatusCode: 0}, tusd.FileInfoChanges{
+				ID:       fmt.Sprintf("%s-%s-%s", tenant.Alias, partitionId, filename),
 				MetaData: map[string]string{"dlza": filename},
-				Storage:  map[string]string{},
-			}
-			fic.Storage["Path"] = filename
-			return resp, fic, nil
+				Storage:  map[string]string{"Path": filename},
+			}, nil
 		},
 	})
 	if err != nil {
-		panic(fmt.Errorf("unable to create handler: %s", err))
+		logger.Fatal().Err(err).Msg("unable to create tus handler")
 	}
 
-	// Start another goroutine for receiving events from the handler whenever
-	// an upload is completed. The event will contain details about the upload
-	// itself and the relevant HTTP request.
+	go handleUploadEvents(ctx, tusHandler, clientStorageHandlerHandler, uploaderService, *conf, logger)
 
-	go func() {
-		for {
-			select {
-			case event := <-handler.CompleteUploads:
-				fmt.Printf("Upload %s finished\n", event.Upload.ID)
-
-				filename := event.HTTPRequest.Header.Get("FileName")
-				objectJson := event.HTTPRequest.Header.Get("ObjectJson")
-				collection := event.HTTPRequest.Header.Get("Collection")
-				statusId := event.HTTPRequest.Header.Get("StatusId")
-				severalObjects := event.HTTPRequest.Header.Get("SeveralObjects")
-				partitionId := event.HTTPRequest.Header.Get("PartitionId")
-				if severalObjects == "0" {
-					continue
-				}
-				objectInstance, err := clientStorageHandlerHandler.GetObjectInstanceByFileNameAndPartitionId(ctx, &pb.ObjectAndFile{StatusId: partitionId, FileName: filename})
-				if err != nil {
-					logger.Error().Msgf("could not GetObjectInstanceByObjectSignatureAndPartitionId for file %s and partitionId %s. err: %v", filename, partitionId, err)
-				}
-				objectInstance.Status = "new"
-				storageLocation, err := clientStorageHandlerHandler.GetStorageLocationByObjectInstanceId(ctx, &pb.Id{Id: objectInstance.Id})
-				if err != nil {
-					logger.Error().Msgf("could not GetStorageLocationByObjectInstanceId for file %s and partitionId %s. err: %v", filename, partitionId, err)
-				}
-				connection := models.Connection{}
-				if err = json.Unmarshal([]byte(storageLocation.Connection), &connection); err != nil {
-					logger.Error().Msgf("error mapping storageLocation json for storageLocation ID: %s. err: %v", storageLocation.Id, err)
-				}
-				_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "copied to temp storage"})
-				if err != nil {
-					log.Printf("could not AlterStatus with status id %s:  to copied to temp storage", statusId)
-				}
-				basePathString := strings.TrimSuffix(objectInstance.Path, filename)
-				log.Printf("basePathString: %s", basePathString)
-				object := models.Object{}
-				err = json.Unmarshal([]byte(objectJson), &object)
-				if err != nil {
-					logger.Error().Msgf("cannot unmarshal object: %s. err: %v", objectJson, err)
-				}
-				objectAndFiles, err := uploaderService.CreateObjectAndFiles(filename, object, collection, basePathString, severalObjects, connection, *conf, ErrorFactory)
-				objectAndFiles.ObjectInstance = objectInstance
-				objectAndFiles.Object.Id = objectInstance.ObjectId
-				if object.Head == "v+" {
-					objectAndFiles.NewVersion = true
-				}
-				if err != nil {
-					_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
-					if err != nil {
-						log.Printf("could not AlterStatus with status id %s: to error", statusId)
-					}
-					log.Printf("could not CreateObjectAndFiles for file %s: %v", filename, err)
-				} else {
-					order := &pb.IncomingOrder{CollectionAlias: collection, StatusId: statusId,
-						FilePath: basePathString + filename, ObjectAndFiles: objectAndFiles, FileName: filename}
-					err = uploaderService.StoringFiles(order, partitionId, severalObjects)
-					if err != nil {
-						_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
-						if err != nil {
-							log.Printf("could not AlterStatus with status id %s: to error", statusId)
-						}
-						log.Printf("could not copy file  %s:", filename)
-					}
-				}
-			case event := <-handler.CreatedUploads:
-				fmt.Printf("Upload %s created\n", event.Upload.ID)
-			case event := <-handler.TerminatedUploads:
-				fmt.Printf("Upload %s terminated\n", event.Upload.ID)
-			case event := <-handler.UploadProgress:
-				fmt.Printf("Upload %s progress: %v\n", event.Upload.ID, event.Upload.Offset*100/event.Upload.Size)
-			}
-		}
-	}()
-
-	var cert tls.Certificate
-	var addCA = []*x509.Certificate{}
-	if conf.TusServer.TLSCert == "" {
-		certBytes, err := fs.ReadFile(certs.CertFS, "ub-log.ub.unibas.ch.cert.pem")
-		if err != nil {
-			emperror.Panic(errors.Wrapf(err, "cannot read internal cert %v/%s", certs.CertFS, "ub-log.ub.unibas.ch.cert.pem"))
-		}
-		keyBytes, err := fs.ReadFile(certs.CertFS, "ub-log.ub.unibas.ch.key.pem")
-		if err != nil {
-			emperror.Panic(errors.Wrapf(err, "cannot read internal key %v/%s", certs.CertFS, "ub-log.ub.unibas.ch.key.pem"))
-		}
-		if cert, err = tls.X509KeyPair(certBytes, keyBytes); err != nil {
-			emperror.Panic(errors.Wrap(err, "cannot create internal cert"))
-		}
-		rootCABytes, err := fs.ReadFile(certs.CertFS, "ca.cert.pem")
-		if err != nil {
-			emperror.Panic(errors.Wrapf(err, "cannot read root ca %v/%s", certs.CertFS, "ca.cert.pem"))
-		}
-		block, _ := pem.Decode(rootCABytes)
-		if block == nil {
-			emperror.Panic(errors.Wrapf(err, "cannot decode root ca"))
-		}
-		rootCA, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			emperror.Panic(errors.Wrap(err, "cannot parse root ca"))
-		}
-		addCA = append(addCA, rootCA)
-	} else {
-		if cert, err = tls.LoadX509KeyPair(conf.TusServer.TLSCert, conf.TusServer.TLSKey); err != nil {
-			emperror.Panic(errors.Wrapf(err, "cannot load key pair %s - %s", conf.TusServer.TLSCert, conf.TusServer.TLSKey))
-		}
-		if conf.TusServer.RootCA != nil {
-			for _, caName := range conf.TusServer.RootCA {
-				rootCABytes, err := os.ReadFile(caName)
-				if err != nil {
-					emperror.Panic(errors.Wrapf(err, "cannot read root ca %s", caName))
-				}
-				block, _ := pem.Decode(rootCABytes)
-				if block == nil {
-					emperror.Panic(errors.Wrapf(err, "cannot decode root ca"))
-				}
-				rootCA, err := x509.ParseCertificate(block.Bytes)
-				if err != nil {
-					emperror.Panic(errors.Wrap(err, "cannot parse root ca"))
-				}
-				addCA = append(addCA, rootCA)
-			}
-		}
+	tusTLSConfig, tusClosers, err := getTusTLSConfig(conf)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("cannot get tus TLS config")
 	}
-	rootCAs, _ := x509.SystemCertPool()
-	if rootCAs == nil {
-		rootCAs = x509.NewCertPool()
-	}
-	for _, ca := range addCA {
-		rootCAs.AddCert(ca)
+	for _, c := range tusClosers {
+		defer c.Close()
 	}
 
-	var tlsConfig = &tls.Config{
-		Certificates: []tls.Certificate{cert},
-		RootCAs:      rootCAs,
-	}
-	corsV := cors.New(cors.Config{
-		AllowAllOrigins: true,
-		// AllowOrigins:  []string{"http://example.com"},
-		AllowMethods:  []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
-		AllowHeaders:  []string{"Authorization", "X-Requested-With", "X-Request-ID", "X-HTTP-Method-Override", "Upload-Length", "Upload-Offset", "Tus-Resumable", "Upload-Metadata", "Upload-Defer-Length", "Upload-Concat", "User-Agent", "Referrer", "Origin", "Content-Type", "Content-Length"},
-		ExposeHeaders: []string{"Upload-Offset", "Location", "Upload-Length", "Tus-Version", "Tus-Resumable", "Tus-Max-Size", "Tus-Extension", "Upload-Metadata", "Upload-Defer-Length", "Upload-Concat", "Location", "Upload-Offset", "Upload-Length"},
-	})
+	authCache := cache.New(time.Hour, time.Hour)
 	checkAuth := func(c *gin.Context) {
-		authKey := c.Request.Header.Get("Authorization")
-		collection := c.Request.Header.Get("Collection")
-		objectJson := c.Request.Header.Get("ObjectJson")
-		statusId := c.Request.Header.Get("StatusId")
-		checksum := c.Request.Header.Get("Checksum")
-		fileName := c.Request.Header.Get("FileName")
-
-		if authKey == "" || collection == "" || objectJson == "" || statusId == "" || checksum == "" || fileName == "" {
+		header := c.Request.Header
+		authKey := header.Get("Authorization")
+		collection := header.Get("Collection")
+		if authKey == "" || collection == "" || header.Get("ObjectJson") == "" || header.Get("StatusId") == "" || header.Get("Checksum") == "" || header.Get("FileName") == "" {
 			c.AbortWithStatus(http.StatusExpectationFailed)
 			return
 		}
 
-		allowed := false
-		allowedCache, hasCache := cs.Get(authKey)
-
-		if !hasCache {
-			allowedDb, err := uploaderService.TenantHasAccess(authKey, collection)
-			if err != nil {
-				log.Printf("could not get tenant access status for collection %s:", collection)
-			}
-			if allowedDb == true {
-				cs.Set(authKey, allowedDb, cache.DefaultExpiration)
-			}
-			allowed = allowedDb
-		} else {
-			allowed = allowedCache.(bool)
-		}
-		if !allowed {
-			c.AbortWithStatus(http.StatusUnauthorized)
+		if allowed, ok := authCache.Get(authKey); ok && allowed.(bool) {
+			c.Next()
 			return
 		}
-		// Continue down the chain to handler etc
-		c.Next()
+
+		allowed, err := uploaderService.TenantHasAccess(authKey, collection)
+		if err != nil {
+			logger.Error().Msgf("access check failed for collection %s: %v", collection, err)
+		}
+		if allowed {
+			authCache.Set(authKey, true, cache.DefaultExpiration)
+			c.Next()
+		} else {
+			c.AbortWithStatus(http.StatusUnauthorized)
+		}
 	}
+
 	router := gin.Default()
-	router.Use(corsV, checkAuth)
-	files := router.Group("/files",
-		func(c *gin.Context) {
-			c.Request.URL.Path = strings.TrimPrefix(c.Request.URL.Path, "/files")
-		})
-	files.POST("/", gin.WrapF(handler.PostFile))
-	files.HEAD("/*id", gin.WrapF(handler.HeadFile))
-	files.PATCH("/*id", gin.WrapF(handler.PatchFile))
-	files.GET("/*id", gin.WrapF(handler.GetFile))
+	router.Use(cors.New(cors.Config{
+		AllowAllOrigins: true,
+		AllowMethods:    []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowHeaders:    []string{"Authorization", "X-Requested-With", "X-Request-ID", "X-HTTP-Method-Override", "Upload-Length", "Upload-Offset", "Tus-Resumable", "Upload-Metadata", "Upload-Defer-Length", "Upload-Concat", "User-Agent", "Referrer", "Origin", "Content-Type", "Content-Length"},
+		ExposeHeaders:   []string{"Upload-Offset", "Location", "Upload-Length", "Tus-Version", "Tus-Resumable", "Tus-Max-Size", "Tus-Extension", "Upload-Metadata", "Upload-Defer-Length", "Upload-Concat"},
+	}), checkAuth)
+
+	files := router.Group("/files", func(c *gin.Context) {
+		c.Request.URL.Path = strings.TrimPrefix(c.Request.URL.Path, "/files")
+	})
+	files.POST("/", gin.WrapF(tusHandler.PostFile))
+	files.HEAD("/*id", gin.WrapF(tusHandler.HeadFile))
+	files.PATCH("/*id", gin.WrapF(tusHandler.PatchFile))
+	files.GET("/*id", gin.WrapF(tusHandler.GetFile))
 
 	serverTus := http.Server{
 		Addr:      conf.TusServer.Addr,
 		Handler:   router,
-		TLSConfig: tlsConfig,
+		TLSConfig: tusTLSConfig,
+	}
+	if err := http2.ConfigureServer(&serverTus, nil); err != nil {
+		logger.Fatal().Err(err).Msg("cannot configure http2 server")
 	}
 
-	var wg = sync.WaitGroup{}
-	if err := http2.ConfigureServer(&serverTus, nil); err != nil {
-		emperror.Panic(errors.Wrap(err, "cannot configure http2 server"))
-	}
+	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		logger.Info().Msgf("Starting tus server: %s", serverTus.Addr)
-		if err := serverTus.ListenAndServeTLS("", ""); err != nil {
-			emperror.Panic(errors.Wrap(err, "cannot start http2 server"))
+		if err := serverTus.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error().Err(err).Msg("tus server failed")
 		}
 	}()
 
@@ -564,16 +348,274 @@ func main() {
 		logger.Info().Msgf("Starting grpc server: %s", grpcServer.GetAddr())
 		grpcServer.Startup()
 	}()
+	// Wait for control-c to stop
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
-	fmt.Println("press ctrl+c to stop server")
+	logger.Info().Msg("press ctrl+c to stop server")
 	s := <-done
-	fmt.Println("got signal:", s)
+	logger.Info().Msgf("got signal: %v", s)
 
 	serverTus.Close()
 	grpcServer.GracefulStop()
-	fmt.Println("Waiting for server shutdown")
+	logger.Info().Msg("Waiting for server shutdown")
 	wg.Wait()
+}
+
+func setupLogger(conf *config.Config, hostname string) (zLogger.ZLogger, []io.Closer, error) {
+	var closers []io.Closer
+	var loggerTLSConfig *tls.Config
+	var loggerLoader io.Closer
+	var err error
+	if conf.Log.Stash.TLS != nil {
+		loggerTLSConfig, loggerLoader, err = loader.CreateClientLoader(conf.Log.Stash.TLS, nil)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "cannot create client loader for logger")
+		}
+		closers = append(closers, loggerLoader)
+	}
+
+	_logger, _logstash, _logfile, err := ublogger.CreateUbMultiLoggerTLS(conf.Log.Level, conf.Log.File,
+		ublogger.SetDataset(conf.Log.Stash.Dataset),
+		ublogger.SetLogStash(conf.Log.Stash.LogstashHost, conf.Log.Stash.LogstashPort, conf.Log.Stash.Namespace, conf.Log.Stash.LogstashTraceLevel),
+		ublogger.SetTLS(conf.Log.Stash.TLS != nil),
+		ublogger.SetTLSConfig(loggerTLSConfig),
+	)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "cannot create logger")
+	}
+
+	if _logstash != nil {
+		closers = append(closers, _logstash)
+	}
+	if _logfile != nil {
+		closers = append(closers, _logfile)
+	}
+
+	l2 := _logger.With().Timestamp().Str("host", hostname).Logger()
+	return &l2, closers, nil
+}
+
+func getTusTLSConfig(conf *config.Config) (*tls.Config, []io.Closer, error) {
+	var closers []io.Closer
+	var cert tls.Certificate
+	var addCA []*x509.Certificate
+	var err error
+
+	if conf.TusServer.TLSCert == "" {
+		certBytes, err := fs.ReadFile(certs.CertFS, "ub-log.ub.unibas.ch.cert.pem")
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "cannot read internal cert %v/%s", certs.CertFS, "ub-log.ub.unibas.ch.cert.pem")
+		}
+		keyBytes, err := fs.ReadFile(certs.CertFS, "ub-log.ub.unibas.ch.key.pem")
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "cannot read internal key %v/%s", certs.CertFS, "ub-log.ub.unibas.ch.key.pem")
+		}
+		if cert, err = tls.X509KeyPair(certBytes, keyBytes); err != nil {
+			return nil, nil, errors.Wrap(err, "cannot create internal cert")
+		}
+		rootCABytes, err := fs.ReadFile(certs.CertFS, "ca.cert.pem")
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "cannot read root ca %v/%s", certs.CertFS, "ca.cert.pem")
+		}
+		block, _ := pem.Decode(rootCABytes)
+		if block == nil {
+			return nil, nil, errors.New("cannot decode root ca")
+		}
+		rootCA, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "cannot parse root ca")
+		}
+		addCA = append(addCA, rootCA)
+	} else {
+		if cert, err = tls.LoadX509KeyPair(conf.TusServer.TLSCert, conf.TusServer.TLSKey); err != nil {
+			return nil, nil, errors.Wrapf(err, "cannot load key pair %s - %s", conf.TusServer.TLSCert, conf.TusServer.TLSKey)
+		}
+		for _, caName := range conf.TusServer.RootCA {
+			rootCABytes, err := os.ReadFile(caName)
+			if err != nil {
+				return nil, nil, errors.Wrapf(err, "cannot read root ca %s", caName)
+			}
+			block, _ := pem.Decode(rootCABytes)
+			if block == nil {
+				return nil, nil, errors.Wrapf(err, "cannot decode root ca %s", caName)
+			}
+			rootCA, err := x509.ParseCertificate(block.Bytes)
+			if err != nil {
+				return nil, nil, errors.Wrapf(err, "cannot parse root ca %s", caName)
+			}
+			addCA = append(addCA, rootCA)
+		}
+	}
+
+	rootCAs, _ := x509.SystemCertPool()
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+	for _, ca := range addCA {
+		rootCAs.AddCert(ca)
+	}
+
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      rootCAs,
+	}, closers, nil
+}
+
+func initS3Stores(ctx context.Context, clientStorageHandlerHandler handlerClientProto.StorageHandlerHandlerServiceClient, storageLocations *pb.StorageLocations, logger zLogger.ZLogger) (storeList, error) {
+	tenants, err := clientStorageHandlerHandler.FindAllTenants(ctx, &pb.NoParam{})
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot get tenants")
+	}
+
+	sl := make(storeList)
+	for _, tenant := range tenants.Tenants {
+		storesForPartitions := make(map[string]s3store.S3Store)
+		for _, storageLocation := range storageLocations.StorageLocations {
+			if !storageLocation.FillFirst || tenant.Id != storageLocation.TenantId {
+				continue
+			}
+
+			connection := models.Connection{}
+			if err = json.Unmarshal([]byte(storageLocation.Connection), &connection); err != nil {
+				return nil, errors.Wrapf(err, "error mapping storageLocation json for storageLocation ID: %s", storageLocation.Id)
+			}
+
+			vfsS3 := maps.Values(connection.VFS)
+			var s3config *vfsrw.S3
+			for _, v := range vfsS3 {
+				if v.S3 != nil {
+					s3config = v.S3
+					break
+				}
+			}
+			if s3config == nil {
+				continue
+			}
+
+			credentialsS3 := credentials.NewStaticCredentialsProvider(string(s3config.AccessKeyID), string(s3config.SecretAccessKey), "")
+			cnf, err := configuration.LoadDefaultConfig(ctx,
+				configuration.WithCredentialsProvider(credentialsS3),
+				configuration.WithRegion("us-east-1"),
+			)
+			if err != nil {
+				return nil, errors.Wrap(err, "cannot load AWS default config")
+			}
+
+			svc := s3.NewFromConfig(cnf, func(o *s3.Options) {
+				o.EndpointResolverV2 = staticResolver{url: "https://" + string(s3config.Endpoint)}
+			})
+
+			partitions, err := clientStorageHandlerHandler.GetStoragePartitionsByStorageLocationId(ctx, &pb.Id{Id: storageLocation.Id})
+			if err != nil {
+				logger.Error().Msgf("cannot get storage partitions for location %s: %v", storageLocation.Id, err)
+				continue
+			}
+
+			for _, partition := range partitions.StoragePartitions {
+				alias := strings.Split(partition.Alias, "/")
+				if len(alias) < 2 {
+					logger.Error().Msgf("invalid partition alias: %s", partition.Alias)
+					continue
+				}
+				s3Store := s3store.New(alias[0], &service.S3Service{Client: svc, AddDisableEndpointPrefix: addDisableEndpointPrefix})
+				s3Store.ObjectPrefix = alias[1] + "/"
+				storesForPartitions[partition.Id] = s3Store
+			}
+		}
+		sl[tenant.Alias] = storesForPartitions
+	}
+	return sl, nil
+}
+
+func handleUploadEvents(ctx context.Context, handler *tusd.Handler, clientStorageHandlerHandler handlerClientProto.StorageHandlerHandlerServiceClient, uploaderService service2.UploaderService, conf config.Config, logger zLogger.ZLogger) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case event := <-handler.CompleteUploads:
+			logger.Info().Msgf("Upload %s finished", event.Upload.ID)
+
+			header := event.HTTPRequest.Header
+			filename := header.Get("FileName")
+			objectJson := header.Get("ObjectJson")
+			collection := header.Get("Collection")
+			statusId := header.Get("StatusId")
+			severalObjects := header.Get("SeveralObjects")
+			partitionId := header.Get("PartitionId")
+
+			if severalObjects == "0" {
+				continue
+			}
+
+			objectInstance, err := clientStorageHandlerHandler.GetObjectInstanceByFileNameAndPartitionId(ctx, &pb.ObjectAndFile{StatusId: partitionId, FileName: filename})
+			if err != nil {
+				logger.Error().Msgf("could not GetObjectInstanceByFileNameAndPartitionId for file %s and partitionId %s: %v", filename, partitionId, err)
+				continue
+			}
+
+			objectInstance.Status = "new"
+			storageLocation, err := clientStorageHandlerHandler.GetStorageLocationByObjectInstanceId(ctx, &pb.Id{Id: objectInstance.Id})
+			if err != nil {
+				logger.Error().Msgf("could not GetStorageLocationByObjectInstanceId for file %s and partitionId %s: %v", filename, partitionId, err)
+				continue
+			}
+
+			connection := models.Connection{}
+			if err = json.Unmarshal([]byte(storageLocation.Connection), &connection); err != nil {
+				logger.Error().Msgf("error mapping storageLocation json for ID %s: %v", storageLocation.Id, err)
+				continue
+			}
+
+			if _, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "copied to temp storage"}); err != nil {
+				logger.Error().Msgf("could not AlterStatus with status id %s: %v", statusId, err)
+			}
+
+			basePathString := strings.TrimSuffix(objectInstance.Path, filename)
+			object := models.Object{}
+			if err = json.Unmarshal([]byte(objectJson), &object); err != nil {
+				logger.Error().Msgf("cannot unmarshal object: %v", err)
+				continue
+			}
+
+			objectAndFiles, err := uploaderService.CreateObjectAndFiles(filename, object, collection, basePathString, severalObjects, connection, conf, ErrorFactory)
+			if err != nil {
+				if _, errStatus := clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"}); errStatus != nil {
+					logger.Error().Msgf("could not AlterStatus to error for %s: %v", statusId, errStatus)
+				}
+				logger.Error().Msgf("could not CreateObjectAndFiles for file %s: %v", filename, err)
+				continue
+			}
+
+			objectAndFiles.ObjectInstance = objectInstance
+			objectAndFiles.Object.Id = objectInstance.ObjectId
+			if object.Head == "v+" {
+				objectAndFiles.NewVersion = true
+			}
+
+			order := &pb.IncomingOrder{
+				CollectionAlias: collection,
+				StatusId:        statusId,
+				FilePath:        basePathString + filename,
+				ObjectAndFiles:  objectAndFiles,
+				FileName:        filename,
+			}
+			if err = uploaderService.StoringFiles(order, partitionId, severalObjects); err != nil {
+				if _, errStatus := clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"}); errStatus != nil {
+					logger.Error().Msgf("could not AlterStatus to error for %s: %v", statusId, errStatus)
+				}
+				logger.Error().Msgf("could not StoringFiles for file %s: %v", filename, err)
+			}
+
+		case event := <-handler.CreatedUploads:
+			logger.Info().Msgf("Upload %s created", event.Upload.ID)
+		case event := <-handler.TerminatedUploads:
+			logger.Info().Msgf("Upload %s terminated", event.Upload.ID)
+		case event := <-handler.UploadProgress:
+			if event.Upload.Size > 0 {
+				logger.Info().Msgf("Upload %s progress: %v%%", event.Upload.ID, event.Upload.Offset*100/event.Upload.Size)
+			}
+		}
+	}
 }
 
 func configErrorFactory() {
