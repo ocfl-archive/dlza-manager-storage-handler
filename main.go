@@ -310,6 +310,8 @@ func main() {
 		stores[tenant.Alias] = storesForPartitions
 	}
 	storeFunc := func(tenantAlias string, partitionId string) (s3store.S3Store, error) {
+		storesIt := stores
+		_ = storesIt
 		storeIt, ok := stores[tenantAlias][partitionId]
 		if !ok {
 			return s3store.S3Store{}, errors.Errorf("store for tenant %s and partition %s not found", tenantAlias, partitionId)

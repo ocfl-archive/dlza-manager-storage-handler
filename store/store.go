@@ -19,15 +19,13 @@ type RoutingStore struct {
 
 func storeFromID(id string) (string, string) {
 	ret := strings.Split(id, "-")
-	partitionId := strings.Join(ret[1:len(ret)-1], "-")
+	partitionId := strings.Join(ret[1:6], "-")
 	tenantAlias := ret[0]
 	if strings.Contains(tenantAlias, "/") {
 		tenantAlias = strings.Split(tenantAlias, "/")[1]
 	}
-	if len(ret) == 7 {
-		return tenantAlias, partitionId
-	}
-	return "", ""
+	return tenantAlias, partitionId
+
 }
 
 func (s RoutingStore) storeFromID(id string) (s3store.S3Store, error) {
