@@ -104,6 +104,19 @@ func (s staticResolver) ResolveEndpoint(ctx context.Context, params s3.EndpointP
 	return smithyendpoints.Endpoint{URI: *u}, nil
 }
 
+type storeList map[string]map[string]s3store.S3Store
+
+func (sl storeList) String() string {
+	str := fmt.Sprintf("StoreList with %d tenants", len(sl))
+	for tenant, stores := range sl {
+		str += fmt.Sprintf("\nTenant %s has %d stores", tenant, len(stores))
+		for storeName, store := range stores {
+			str += fmt.Sprintf("\n\tStore %s: %s", storeName, store)
+		}
+	}
+	return str
+}
+
 func main() {
 	flag.Parse()
 
@@ -253,7 +266,7 @@ func main() {
 		logger.Error().Msgf("cannot get tenants: %v", err)
 	}
 
-	stores = make(map[string]map[string]s3store.S3Store)
+	stores = make(storeList)
 
 	for _, tenant := range tenants.Tenants {
 		storesForPartitions := make(map[string]s3store.S3Store)
