@@ -16,10 +16,10 @@ func TestTrimKey(t *testing.T) {
 		in   string
 		want string
 	}{
-		{name: "t1", in: "89280007-8674-4aa8-9b71-8943cfaf96ff-partition-1/tenantname-89280007-8674-4aa8-9b71-8943cfaf96ff-filename.zip", want: "89280007-8674-4aa8-9b71-8943cfaf96ff-partition-1/filename.zip"},
+		{name: "t1", in: "89280007-8674-4aa8-9b71-8943cfaf96ff-partition-1/tenantname-89280007-8674-4aa8-9b71-8943cfaf96ff-filename-test.zip", want: "89280007-8674-4aa8-9b71-8943cfaf96ff-partition-1/filename-test.zip"},
 		{name: "t2", in: "archive/tenantname-89280007-8674-4aa8-9b71-8943cfaf96ff-filename.zip", want: "archive/filename.zip"},
 		{name: "t3", in: "89280007-8674-4aa8-9b71-8943cfaf96ff-partition-1/file/tenantname-89280007-8674-4aa8-9b71-8943cfaf96ff-filename.zip", want: "89280007-8674-4aa8-9b71-8943cfaf96ff-partition-1/filename.zip"},
-		{name: "t4", in: "archive/file/tenantname-89280007-8674-4aa8-9b71-8943cfaf96ff-filename.zip", want: "archive/filename.zip"},
+		{name: "t4", in: "archive/file/tenantname-89280007-8674-4aa8-9b71-8943cfaf96ff-filename-test.zip", want: "archive/filename-test.zip"},
 	}
 
 	for _, tt := range tests {

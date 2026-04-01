@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -61,13 +62,30 @@ func (s *S3Service) UploadPartCopy(ctx context.Context, input *s3.UploadPartCopy
 	return s.Client.UploadPartCopy(ctx, input, s.AddDisableEndpointPrefix)
 }
 
-func TrimKey(key *string) *string {
-	splitKeyArray := strings.Split(*key, "/")
+var trimKeyTenantPrefixRe = regexp.MustCompile(
+	`^tenantname-([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})-(.+)$`,
+)
 
-	formattedKeyArray := strings.Split(splitKeyArray[len(splitKeyArray)-1], "-")
-	if len(formattedKeyArray) == 1 {
+func TrimKey(key *string) *string {
+	if key == nil || *key == "" {
 		return key
 	}
-	res := splitKeyArray[0] + "/" + formattedKeyArray[len(formattedKeyArray)-1]
+
+	parts := strings.Split(*key, "/")
+	if len(parts) < 2 {
+		return key
+	}
+
+	prefix := parts[0]
+	last := parts[len(parts)-1]
+
+	m := trimKeyTenantPrefixRe.FindStringSubmatch(last)
+	if len(m) != 3 {
+		return key
+	}
+
+	trimmedFile := m[2]
+	res := prefix + "/" + trimmedFile
 	return &res
+
 }
