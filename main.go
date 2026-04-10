@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
+	"strings"
 
 	"flag"
 	"fmt"
@@ -41,7 +43,9 @@ import (
 	"github.com/ocfl-archive/dlza-manager-storage-handler/service"
 	service2 "github.com/ocfl-archive/dlza-manager-storage-handler/service"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/storagehandlerproto"
+	"github.com/ocfl-archive/dlza-manager-storage-handler/store"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
+	"github.com/ocfl-archive/dlza-manager/models"
 	archiveerror "github.com/ocfl-archive/error/pkg/error"
 	"github.com/patrickmn/go-cache"
 	"github.com/rs/zerolog/log"
@@ -50,6 +54,7 @@ import (
 	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger/v2"
 	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 	"go.ub.unibas.ch/cloud/miniresolverclient/pkg/miniresolverclient"
+	"golang.org/x/exp/maps"
 	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -61,6 +66,8 @@ var ErrorFactory = archiveerror.NewFactory(errorTopic)
 var configFile = flag.String("config", "", "config file in toml format")
 
 var conf *config.Config
+
+var stores map[string]map[string]s3store.S3Store
 
 const separator = "+"
 
@@ -98,7 +105,6 @@ func (s staticResolver) ResolveEndpoint(ctx context.Context, params s3.EndpointP
 }
 
 func main() {
-
 	flag.Parse()
 
 	var cfgFS fs.FS
@@ -238,30 +244,65 @@ func main() {
 	uploaderService := service2.UploaderService{StorageHandlerHandlerServiceClient: clientStorageHandlerHandler, Logger: &logger, Vfs: vfs, ConfigObj: *conf}
 	ctx := context.Background()
 	cs := cache.New(60*time.Minute, 60*time.Minute)
-	credentialsS3 := credentials.NewStaticCredentialsProvider(conf.S3TempStorage.Key, conf.S3TempStorage.Secret, "")
-
-	// Obtaining the S3 SDK client configuration based on the passed parameters.
-	cnf, err := configuration.LoadDefaultConfig(
-		ctx,
-		configuration.WithCredentialsProvider(credentialsS3),
-		configuration.WithRegion("us-east-1"),
-		//configuration.WithRequestChecksumCalculation(0),
-		//configuration.WithResponseChecksumValidation(0),
-	)
-	if err != nil {
-		panic(err.Error())
-	}
-	// Create a new S3 SDK client instance.
-	svc := s3.NewFromConfig(cnf, func(o *s3.Options) {
-		o.EndpointResolverV2 = staticResolver{url: conf.S3TempStorage.ApiUrlValue}
-	})
 
 	// Create a new S3 SDK client instance.
 	composer := tusd.NewStoreComposer()
 
-	s3Store := s3store.New(conf.S3TempStorage.Bucket, &service.S3Service{Client: svc, AddDisableEndpointPrefix: addDisableEndpointPrefix})
+	tenants, err := clientStorageHandlerHandler.FindAllTenants(ctx, &pb.NoParam{})
+	if err != nil {
+		logger.Error().Msgf("cannot get tenants: %v", err)
+	}
 
-	s3Store.UseIn(composer)
+	stores = make(map[string]map[string]s3store.S3Store)
+
+	for _, tenant := range tenants.Tenants {
+		storesForPartitions := make(map[string]s3store.S3Store)
+		for _, storageLocation := range storageLocations.StorageLocations {
+			if storageLocation.FillFirst {
+				if tenant.Id == storageLocation.TenantId {
+					connection := models.Connection{}
+					if err = json.Unmarshal([]byte(storageLocation.Connection), &connection); err != nil {
+						logger.Panic().Msgf("error mapping storageLocation json for storageLocation ID: %v", storageLocation.Id)
+					}
+					credentialsS3It := credentials.NewStaticCredentialsProvider(string(maps.Values(connection.VFS)[0].S3.AccessKeyID), string(maps.Values(connection.VFS)[0].S3.SecretAccessKey), "")
+					cnfIt, err := configuration.LoadDefaultConfig(
+						ctx,
+						configuration.WithCredentialsProvider(credentialsS3It),
+						configuration.WithRegion("us-east-1"),
+						//configuration.WithRequestChecksumCalculation(0),
+						//configuration.WithResponseChecksumValidation(0),
+					)
+					if err != nil {
+						logger.Panic().Err(err).Msg(err.Error())
+					}
+					svcIt := s3.NewFromConfig(cnfIt, func(o *s3.Options) {
+						o.EndpointResolverV2 = staticResolver{url: "https://" + string(maps.Values(connection.VFS)[0].S3.Endpoint)}
+					})
+					partitions, err := clientStorageHandlerHandler.GetStoragePartitionsByStorageLocationId(ctx, &pb.Id{Id: storageLocation.Id})
+					if err != nil {
+						logger.Error().Msgf("cannot get storage partitions: %v", err)
+					}
+					for _, partition := range partitions.StoragePartitions {
+						alias := strings.Split(partition.Alias, "/")
+						s3StoreIt := s3store.New(alias[0], &service.S3Service{Client: svcIt, AddDisableEndpointPrefix: addDisableEndpointPrefix})
+						s3StoreIt.ObjectPrefix = alias[1] + "/"
+						storesForPartitions[partition.Id] = s3StoreIt
+					}
+				}
+			}
+		}
+		stores[tenant.Alias] = storesForPartitions
+	}
+	storeFunc := func(tenantAlias string, partitionId string) (s3store.S3Store, bool) {
+		storeIt, ok := stores[tenantAlias][partitionId]
+		if !ok {
+			return s3store.S3Store{}, ok
+		}
+		return storeIt, ok
+	}
+	customStore := store.NewRoutingStore(storeFunc)
+	customStore.UseIn(composer)
+
 	handler, err := tusd.NewHandler(tusd.Config{
 		BasePath:              "/files/",
 		StoreComposer:         composer,
@@ -273,8 +314,16 @@ func main() {
 				Header:     nil,
 			}
 			filename := hook.HTTPRequest.Header.Get("FileName")
+			collectionAlias := hook.HTTPRequest.Header.Get("Collection")
+			partitionId := hook.HTTPRequest.Header.Get("PartitionId")
+			tenant, err := clientStorageHandlerHandler.FindTenantByCollectionAlias(context.Background(), &pb.Id{Id: collectionAlias})
+			if err != nil {
+				logger.Error().Msgf("cannot get tenant name: %v", err)
+				return tusd.HTTPResponse{StatusCode: 404, Header: map[string]string{}, Body: err.Error()}, tusd.FileInfoChanges{}, err
+			}
+			filenameWithTenant := fmt.Sprintf("%s-%s-%s", tenant.Alias, partitionId, filename)
 			var fic = tusd.FileInfoChanges{
-				ID:       filename,
+				ID:       filenameWithTenant,
 				MetaData: map[string]string{"dlza": filename},
 				Storage:  map[string]string{},
 			}
@@ -295,20 +344,46 @@ func main() {
 			select {
 			case event := <-handler.CompleteUploads:
 				fmt.Printf("Upload %s finished\n", event.Upload.ID)
-				basePathString := conf.S3TempStorage.UploadFolder + "/" + conf.S3TempStorage.Bucket + "/"
+
 				filename := event.HTTPRequest.Header.Get("FileName")
 				objectJson := event.HTTPRequest.Header.Get("ObjectJson")
 				collection := event.HTTPRequest.Header.Get("Collection")
 				statusId := event.HTTPRequest.Header.Get("StatusId")
 				severalObjects := event.HTTPRequest.Header.Get("SeveralObjects")
+				partitionId := event.HTTPRequest.Header.Get("PartitionId")
+				if severalObjects == "0" {
+					continue
+				}
+				objectInstance, err := clientStorageHandlerHandler.GetObjectInstanceByFileNameAndPartitionId(ctx, &pb.ObjectAndFile{StatusId: partitionId, FileName: filename})
+				if err != nil {
+					logger.Error().Msgf("could not GetObjectInstanceByObjectSignatureAndPartitionId for file %s and partitionId %s. err: %v", filename, partitionId, err)
+				}
+				objectInstance.Status = "new"
+				storageLocation, err := clientStorageHandlerHandler.GetStorageLocationByObjectInstanceId(ctx, &pb.Id{Id: objectInstance.Id})
+				if err != nil {
+					logger.Error().Msgf("could not GetStorageLocationByObjectInstanceId for file %s and partitionId %s. err: %v", filename, partitionId, err)
+				}
+				connection := models.Connection{}
+				if err = json.Unmarshal([]byte(storageLocation.Connection), &connection); err != nil {
+					logger.Error().Msgf("error mapping storageLocation json for storageLocation ID: %s. err: %v", storageLocation.Id, err)
+				}
 				_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "copied to temp storage"})
 				if err != nil {
 					log.Printf("could not AlterStatus with status id %s:  to copied to temp storage", statusId)
 				}
-				if severalObjects == "0" {
-					continue
+				basePathString := strings.TrimSuffix(objectInstance.Path, filename)
+				log.Printf("basePathString: %s", basePathString)
+				object := models.Object{}
+				err = json.Unmarshal([]byte(objectJson), &object)
+				if err != nil {
+					logger.Error().Msgf("cannot unmarshal object: %s. err: %v", objectJson, err)
 				}
-				objectAndFiles, err := uploaderService.CreateObjectAndFiles(filename, objectJson, collection, basePathString, severalObjects, *conf, ErrorFactory)
+				objectAndFiles, err := uploaderService.CreateObjectAndFiles(filename, object, collection, basePathString, severalObjects, connection, *conf, ErrorFactory)
+				objectAndFiles.ObjectInstance = objectInstance
+				objectAndFiles.Object.Id = objectInstance.ObjectId
+				if object.Head == "v+" {
+					objectAndFiles.NewVersion = true
+				}
 				if err != nil {
 					_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
 					if err != nil {
@@ -318,7 +393,7 @@ func main() {
 				} else {
 					order := &pb.IncomingOrder{CollectionAlias: collection, StatusId: statusId,
 						FilePath: basePathString + filename, ObjectAndFiles: objectAndFiles, FileName: filename}
-					err = uploaderService.CopyFiles(order, severalObjects)
+					err = uploaderService.StoringFiles(order, partitionId, severalObjects)
 					if err != nil {
 						_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
 						if err != nil {
