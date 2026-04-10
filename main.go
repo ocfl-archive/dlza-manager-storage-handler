@@ -104,6 +104,19 @@ func (s staticResolver) ResolveEndpoint(ctx context.Context, params s3.EndpointP
 	return smithyendpoints.Endpoint{URI: *u}, nil
 }
 
+type storeList map[string]map[string]s3store.S3Store
+
+func (sl storeList) String() string {
+	str := fmt.Sprintf("StoreList with %d tenants", len(sl))
+	for tenant, stores := range sl {
+		str += fmt.Sprintf("\nTenant %s has %d stores", tenant, len(stores))
+		for storeName, s3Store := range stores {
+			str += fmt.Sprintf("\n\tStore %s: %v", storeName, s3Store)
+		}
+	}
+	return str
+}
+
 func main() {
 	flag.Parse()
 
@@ -253,7 +266,7 @@ func main() {
 		logger.Error().Msgf("cannot get tenants: %v", err)
 	}
 
-	stores = make(map[string]map[string]s3store.S3Store)
+	stores = make(storeList)
 
 	for _, tenant := range tenants.Tenants {
 		storesForPartitions := make(map[string]s3store.S3Store)
@@ -280,10 +293,13 @@ func main() {
 					})
 					partitions, err := clientStorageHandlerHandler.GetStoragePartitionsByStorageLocationId(ctx, &pb.Id{Id: storageLocation.Id})
 					if err != nil {
-						logger.Error().Msgf("cannot get storage partitions: %v", err)
+						logger.Fatal().Msgf("cannot get storage partitions: %v", err)
 					}
 					for _, partition := range partitions.StoragePartitions {
 						alias := strings.Split(partition.Alias, "/")
+						if len(alias) < 2 {
+							logger.Fatal().Msgf("partition alias %s is not valid", partition.Alias)
+						}
 						s3StoreIt := s3store.New(alias[0], &service.S3Service{Client: svcIt, AddDisableEndpointPrefix: addDisableEndpointPrefix})
 						s3StoreIt.ObjectPrefix = alias[1] + "/"
 						storesForPartitions[partition.Id] = s3StoreIt
@@ -293,18 +309,20 @@ func main() {
 		}
 		stores[tenant.Alias] = storesForPartitions
 	}
-	storeFunc := func(tenantAlias string, partitionId string) (s3store.S3Store, bool) {
+	storeFunc := func(tenantAlias string, partitionId string) (s3store.S3Store, error) {
+		storesIt := stores
+		_ = storesIt
 		storeIt, ok := stores[tenantAlias][partitionId]
 		if !ok {
-			return s3store.S3Store{}, ok
+			return s3store.S3Store{}, errors.Errorf("store for tenant %s and partition %s not found", tenantAlias, partitionId)
 		}
-		return storeIt, ok
+		return storeIt, nil
 	}
-	customStore := store.NewRoutingStore(storeFunc)
+	customStore := store.NewRoutingStore(storeFunc, logger)
 	customStore.UseIn(composer)
 
 	handler, err := tusd.NewHandler(tusd.Config{
-		BasePath:              "/files/",
+		BasePath:              "/files",
 		StoreComposer:         composer,
 		NotifyCompleteUploads: true,
 		PreUploadCreateCallback: func(hook tusd.HookEvent) (tusd.HTTPResponse, tusd.FileInfoChanges, error) {
@@ -319,7 +337,7 @@ func main() {
 			tenant, err := clientStorageHandlerHandler.FindTenantByCollectionAlias(context.Background(), &pb.Id{Id: collectionAlias})
 			if err != nil {
 				logger.Error().Msgf("cannot get tenant name: %v", err)
-				return tusd.HTTPResponse{StatusCode: 404, Header: map[string]string{}, Body: err.Error()}, tusd.FileInfoChanges{}, err
+				return tusd.HTTPResponse{StatusCode: 404, Body: fmt.Sprintf("Tenant with alias %s was not found. err: %v", collectionAlias, err)}, tusd.FileInfoChanges{}, err
 			}
 			filenameWithTenant := fmt.Sprintf("%s-%s-%s", tenant.Alias, partitionId, filename)
 			var fic = tusd.FileInfoChanges{
@@ -517,10 +535,14 @@ func main() {
 	}
 	router := gin.Default()
 	router.Use(corsV, checkAuth)
-	router.POST("/files/", gin.WrapF(handler.PostFile))
-	router.HEAD("/files/:id", gin.WrapF(handler.HeadFile))
-	router.PATCH("/files/:id", gin.WrapF(handler.PatchFile))
-	router.GET("/files/:id", gin.WrapF(handler.GetFile))
+	files := router.Group("/files",
+		func(c *gin.Context) {
+			c.Request.URL.Path = strings.TrimPrefix(c.Request.URL.Path, "/files")
+		})
+	files.POST("/", gin.WrapF(handler.PostFile))
+	files.HEAD("/*id", gin.WrapF(handler.HeadFile))
+	files.PATCH("/*id", gin.WrapF(handler.PatchFile))
+	files.GET("/*id", gin.WrapF(handler.GetFile))
 
 	serverTus := http.Server{
 		Addr:      conf.TusServer.Addr,
