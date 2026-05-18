@@ -379,7 +379,7 @@ func main() {
 					if err != nil {
 						logger.Error().Msgf("could not AlterStatus with status id %s:  to error", statusId)
 					}
-					return
+					continue
 				}
 				objectInstance.Status = "new"
 				storageLocation, err := clientStorageHandlerHandler.GetStorageLocationByObjectInstanceId(ctx, &pb.Id{Id: objectInstance.Id})
@@ -389,7 +389,7 @@ func main() {
 					if err != nil {
 						logger.Error().Msgf("could not AlterStatus with status id %s:  to error", statusId)
 					}
-					return
+					continue
 				}
 				connection := models.Connection{}
 				if err = json.Unmarshal([]byte(storageLocation.Connection), &connection); err != nil {
@@ -398,7 +398,7 @@ func main() {
 					if err != nil {
 						logger.Error().Msgf("could not AlterStatus with status id %s:  error", statusId)
 					}
-					return
+					continue
 				}
 				_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "copied to temp storage"})
 				if err != nil {
@@ -414,7 +414,7 @@ func main() {
 					if err != nil {
 						logger.Error().Msgf("could not AlterStatus with status id %s: to error", statusId)
 					}
-					return
+					continue
 				}
 				objectAndFiles, err := uploaderService.CreateObjectAndFiles(filename, object, collection, basePathString, severalObjects, connection, *conf, ErrorFactory)
 				if err != nil {
@@ -423,7 +423,7 @@ func main() {
 						logger.Error().Msgf("could not AlterStatus with status id %s: to error", statusId)
 					}
 					logger.Error().Msgf("could not CreateObjectAndFiles for file %s: %v", filename, err)
-					return
+					continue
 				}
 				objectAndFiles.ObjectInstance = objectInstance
 				objectAndFiles.Object.Id = objectInstance.ObjectId
