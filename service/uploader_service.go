@@ -241,6 +241,7 @@ func GetFilesFromGocflObject(tusFileName string, basePathString string, vfs fs.F
 		return nil, err
 	}
 	if objectOcfl.Objects == nil {
+		logger.Error().Msgf("Error mapping json: %s", pathTus)
 		return nil, errors.New(fmt.Sprintf("Error mapping json: %s", pathTus))
 	}
 	for _, mapItem := range objectOcfl.Objects {

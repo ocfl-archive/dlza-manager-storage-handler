@@ -377,7 +377,7 @@ func main() {
 					logger.Error().Msgf("could not GetObjectInstanceByObjectSignatureAndPartitionId for file %s and partitionId %s. err: %v", filename, partitionId, err)
 					_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
 					if err != nil {
-						log.Printf("could not AlterStatus with status id %s:  to error", statusId)
+						logger.Error().Msgf("could not AlterStatus with status id %s:  to error", statusId)
 					}
 					return
 				}
@@ -387,7 +387,7 @@ func main() {
 					logger.Error().Msgf("could not GetStorageLocationByObjectInstanceId for file %s and partitionId %s. err: %v", filename, partitionId, err)
 					_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
 					if err != nil {
-						log.Printf("could not AlterStatus with status id %s:  to error", statusId)
+						logger.Error().Msgf("could not AlterStatus with status id %s:  to error", statusId)
 					}
 					return
 				}
@@ -396,7 +396,7 @@ func main() {
 					logger.Error().Msgf("error mapping storageLocation json for storageLocation ID: %s. err: %v", storageLocation.Id, err)
 					_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
 					if err != nil {
-						log.Printf("could not AlterStatus with status id %s:  error", statusId)
+						logger.Error().Msgf("could not AlterStatus with status id %s:  error", statusId)
 					}
 					return
 				}
@@ -412,7 +412,7 @@ func main() {
 					logger.Error().Msgf("cannot unmarshal object: %s. err: %v", objectJson, err)
 					_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
 					if err != nil {
-						log.Printf("could not AlterStatus with status id %s: to error", statusId)
+						logger.Error().Msgf("could not AlterStatus with status id %s: to error", statusId)
 					}
 					return
 				}
@@ -420,9 +420,9 @@ func main() {
 				if err != nil {
 					_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
 					if err != nil {
-						log.Printf("could not AlterStatus with status id %s: to error", statusId)
+						logger.Error().Msgf("could not AlterStatus with status id %s: to error", statusId)
 					}
-					log.Printf("could not CreateObjectAndFiles for file %s: %v", filename, err)
+					logger.Error().Msgf("could not CreateObjectAndFiles for file %s: %v", filename, err)
 					return
 				}
 				objectAndFiles.ObjectInstance = objectInstance
