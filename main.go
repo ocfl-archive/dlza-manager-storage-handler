@@ -375,15 +375,30 @@ func main() {
 				objectInstance, err := clientStorageHandlerHandler.GetObjectInstanceByFileNameAndPartitionId(ctx, &pb.ObjectAndFile{StatusId: partitionId, FileName: filename})
 				if err != nil {
 					logger.Error().Msgf("could not GetObjectInstanceByObjectSignatureAndPartitionId for file %s and partitionId %s. err: %v", filename, partitionId, err)
+					_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
+					if err != nil {
+						logger.Error().Msgf("could not AlterStatus with status id %s:  to error", statusId)
+					}
+					continue
 				}
 				objectInstance.Status = "new"
 				storageLocation, err := clientStorageHandlerHandler.GetStorageLocationByObjectInstanceId(ctx, &pb.Id{Id: objectInstance.Id})
 				if err != nil {
 					logger.Error().Msgf("could not GetStorageLocationByObjectInstanceId for file %s and partitionId %s. err: %v", filename, partitionId, err)
+					_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
+					if err != nil {
+						logger.Error().Msgf("could not AlterStatus with status id %s:  to error", statusId)
+					}
+					continue
 				}
 				connection := models.Connection{}
 				if err = json.Unmarshal([]byte(storageLocation.Connection), &connection); err != nil {
 					logger.Error().Msgf("error mapping storageLocation json for storageLocation ID: %s. err: %v", storageLocation.Id, err)
+					_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
+					if err != nil {
+						logger.Error().Msgf("could not AlterStatus with status id %s:  error", statusId)
+					}
+					continue
 				}
 				_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "copied to temp storage"})
 				if err != nil {
@@ -395,31 +410,38 @@ func main() {
 				err = json.Unmarshal([]byte(objectJson), &object)
 				if err != nil {
 					logger.Error().Msgf("cannot unmarshal object: %s. err: %v", objectJson, err)
+					_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
+					if err != nil {
+						logger.Error().Msgf("could not AlterStatus with status id %s: to error", statusId)
+					}
+					continue
 				}
 				objectAndFiles, err := uploaderService.CreateObjectAndFiles(filename, object, collection, basePathString, severalObjects, connection, *conf, ErrorFactory)
+				if err != nil {
+					_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
+					if err != nil {
+						logger.Error().Msgf("could not AlterStatus with status id %s: to error", statusId)
+					}
+					logger.Error().Msgf("could not CreateObjectAndFiles for file %s: %v", filename, err)
+					continue
+				}
 				objectAndFiles.ObjectInstance = objectInstance
 				objectAndFiles.Object.Id = objectInstance.ObjectId
 				if object.Head == "v+" {
 					objectAndFiles.NewVersion = true
 				}
+
+				order := &pb.IncomingOrder{CollectionAlias: collection, StatusId: statusId,
+					FilePath: basePathString + filename, ObjectAndFiles: objectAndFiles, FileName: filename}
+				err = uploaderService.StoringFiles(order, partitionId, severalObjects)
 				if err != nil {
 					_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
 					if err != nil {
 						log.Printf("could not AlterStatus with status id %s: to error", statusId)
 					}
-					log.Printf("could not CreateObjectAndFiles for file %s: %v", filename, err)
-				} else {
-					order := &pb.IncomingOrder{CollectionAlias: collection, StatusId: statusId,
-						FilePath: basePathString + filename, ObjectAndFiles: objectAndFiles, FileName: filename}
-					err = uploaderService.StoringFiles(order, partitionId, severalObjects)
-					if err != nil {
-						_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
-						if err != nil {
-							log.Printf("could not AlterStatus with status id %s: to error", statusId)
-						}
-						log.Printf("could not copy file  %s:", filename)
-					}
+					log.Printf("could not copy file  %s:", filename)
 				}
+
 			case event := <-handler.CreatedUploads:
 				fmt.Printf("Upload %s created\n", event.Upload.ID)
 			case event := <-handler.TerminatedUploads:
