@@ -219,8 +219,7 @@ func extractMetadata(tusFileName string, basePath string, connection models.Conn
 }
 
 func GetFilesFromGocflObject(tusFileName string, basePathString string, vfs fs.FS, logger zLogger.ZLogger) ([]*pb.File, error) {
-	objectOcfl := ocfl.StorageRootMetadata{}
-	object := &ocfl.ObjectMetadata{}
+	objectOcfl := &ocfl.ObjectMetadata{}
 	pathTus := path.Join(basePathString, strings.TrimSuffix(tusFileName, filepath.Ext(tusFileName))+".json")
 	sourceFP, err := vfs.Open(pathTus)
 	if err != nil {
@@ -240,15 +239,12 @@ func GetFilesFromGocflObject(tusFileName string, basePathString string, vfs fs.F
 		logger.Error().Msgf("cannot Unmarshal jsonObject: %v", err)
 		return nil, err
 	}
-	if objectOcfl.Objects == nil {
+	if objectOcfl.ID == "" {
 		logger.Error().Msgf("Error mapping json: %s", pathTus)
 		return nil, errors.New(fmt.Sprintf("Error mapping json: %s", pathTus))
 	}
-	for _, mapItem := range objectOcfl.Objects {
-		object = mapItem
-	}
-	filesRetrieved := object.Files
-	head := object.Head
+	filesRetrieved := objectOcfl.Files
+	head := objectOcfl.Head
 
 	files := make([]*pb.File, 0)
 	for _, fileRetr := range filesRetrieved {
