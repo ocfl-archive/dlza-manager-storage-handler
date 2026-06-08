@@ -2,11 +2,12 @@ package server
 
 import (
 	"context"
+	"io/fs"
+
 	"emperror.dev/errors"
-	"github.com/je4/filesystem/v3/pkg/writefs"
 	storageHandlerPb "github.com/ocfl-archive/dlza-manager-storage-handler/storagehandlerproto"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
-	"io/fs"
+	"github.com/ocfl-archive/filesystem/pkg/writefs"
 )
 
 type ClerkStorageHandlerServer struct {
