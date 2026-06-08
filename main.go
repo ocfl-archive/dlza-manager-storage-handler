@@ -10,6 +10,7 @@ import (
 
 	"flag"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"net/url"
@@ -30,6 +31,7 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/je4/filesystem/v3/pkg/vfsrw"
 	"github.com/je4/trustutil/v2/pkg/certutil"
 	configutil "github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/zLogger"
@@ -45,14 +47,11 @@ import (
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	"github.com/ocfl-archive/dlza-manager/models"
 	archiveerror "github.com/ocfl-archive/error/pkg/error"
-	"github.com/ocfl-archive/filesystem/pkg/vfsrw"
-	"github.com/ocfl-archive/gocfl/v3/pkg/ocfl"
-	"github.com/ocfl-archive/gocfl/v3/pkg/ocfl/version"
 	"github.com/patrickmn/go-cache"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tusd "github.com/tus/tusd/v2/pkg/handler"
 	"github.com/tus/tusd/v2/pkg/s3store"
+	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger/v2"
 	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 	"go.ub.unibas.ch/cloud/miniresolverclient/pkg/miniresolverclient"
 	"golang.org/x/exp/maps"
@@ -148,14 +147,44 @@ func main() {
 		log.Err(err).Msgf("cannot load toml from [%v] %s: %v", cfgFS, cfgFile, err)
 	}
 	configErrorFactory()
-	ctx := context.Background()
-	out := zerolog.ConsoleWriter{Out: os.Stderr}
-	zlogger := zerolog.New(out) //.
-	//Level(zerolog.ErrorLevel)
-	var _zlogger zLogger.ZLogger = &zlogger
-	logger := ocfl.NewOCFLLogger(ctx, &zlogger, nil, version.Version1_1, nil)
 
-	clientTLSConfig, clientLoader, err := loader.CreateClientLoader(conf.ClientTLS, _zlogger)
+	// create logger instance
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Err(err).Msgf("cannot get hostname: %v", err)
+	}
+
+	var loggerTLSConfig *tls.Config
+	var loggerLoader io.Closer
+	if conf.Log.Stash.TLS != nil {
+		loggerTLSConfig, loggerLoader, err = loader.CreateClientLoader(conf.Log.Stash.TLS, nil)
+		if err != nil {
+			log.Err(err).Msgf("cannot create client loader: %v", err)
+		}
+		defer loggerLoader.Close()
+	}
+
+	_logger, _logstash, _logfile, err := ublogger.CreateUbMultiLoggerTLS(conf.Log.Level, conf.Log.File,
+		ublogger.SetDataset(conf.Log.Stash.Dataset),
+		ublogger.SetLogStash(conf.Log.Stash.LogstashHost, conf.Log.Stash.LogstashPort, conf.Log.Stash.Namespace, conf.Log.Stash.LogstashTraceLevel),
+		ublogger.SetTLS(conf.Log.Stash.TLS != nil),
+		ublogger.SetTLSConfig(loggerTLSConfig),
+	)
+	if err != nil {
+		log.Err(err).Msgf("cannot create logger: %v", err)
+	}
+	if _logstash != nil {
+		defer _logstash.Close()
+	}
+
+	if _logfile != nil {
+		defer _logfile.Close()
+	}
+
+	l2 := _logger.With().Timestamp().Str("host", hostname).Logger() //.Output(output)
+	var logger zLogger.ZLogger = &l2
+
+	clientTLSConfig, clientLoader, err := loader.CreateClientLoader(conf.ClientTLS, logger)
 	if err != nil {
 		logger.Panic().Msgf("cannot create client loader: %v", err)
 	}
@@ -170,14 +199,14 @@ func main() {
 	}
 	certutil.AddDefaultDNSNames(domainPrefix+storagehandlerproto.DispatcherStorageHandlerService_ServiceDesc.ServiceName, domainPrefix+storagehandlerproto.ClerkStorageHandlerService_ServiceDesc.ServiceName)
 
-	serverTLSConfig, serverLoader, err := loader.CreateServerLoader(true, conf.ServerTLS, nil, _zlogger)
+	serverTLSConfig, serverLoader, err := loader.CreateServerLoader(true, conf.ServerTLS, nil, logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("cannot create server loader")
 	}
 	defer serverLoader.Close()
 
 	logger.Info().Msgf("resolver address is %s", conf.ResolverAddr)
-	resolverClient, err := miniresolverclient.NewMiniresolverClientNet(conf.ResolverAddr, conf.NetName, conf.GRPCClient, clientTLSConfig, serverTLSConfig, time.Duration(conf.ResolverTimeout), time.Duration(conf.ResolverNotFoundTimeout), _zlogger)
+	resolverClient, err := miniresolverclient.NewMiniresolverClientNet(conf.ResolverAddr, conf.NetName, conf.GRPCClient, clientTLSConfig, serverTLSConfig, time.Duration(conf.ResolverTimeout), time.Duration(conf.ResolverNotFoundTimeout), logger)
 	if err != nil {
 		logger.Fatal().Msgf("cannot create resolver client: %v", err)
 	}
@@ -188,6 +217,9 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("cannot create server")
 	}
+	addr := grpcServer.GetAddr()
+	l2 = _logger.With().Timestamp().Str("addr", addr).Logger() //.Output(output)
+	logger = &l2
 
 	clientStorageHandlerHandler, err := miniresolverclient.NewClient[handlerClientProto.StorageHandlerHandlerServiceClient](
 		resolverClient,
@@ -207,7 +239,7 @@ func main() {
 		logger.Panic().Msgf("error mapping json for storage location connection field: %v", err)
 	}
 
-	vfs, err := vfsrw.NewFS(vfsConfig, _zlogger)
+	vfs, err := vfsrw.NewFS(vfsConfig, &l2)
 	if err != nil {
 		logger.Panic().Err(err).Msg("cannot create vfs")
 	}
@@ -218,11 +250,12 @@ func main() {
 		}
 	}()
 
-	storagehandlerproto.RegisterDispatcherStorageHandlerServiceServer(grpcServer, &server.DispatcherStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: _zlogger, Vfs: vfs})
-	storagehandlerproto.RegisterCheckerStorageHandlerServiceServer(grpcServer, &server.CheckerStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: _zlogger, Vfs: vfs})
+	storagehandlerproto.RegisterDispatcherStorageHandlerServiceServer(grpcServer, &server.DispatcherStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger, Vfs: vfs})
+	storagehandlerproto.RegisterCheckerStorageHandlerServiceServer(grpcServer, &server.CheckerStorageHandlerServer{ClientStorageHandlerHandler: clientStorageHandlerHandler, Logger: logger, Vfs: vfs})
 	storagehandlerproto.RegisterClerkStorageHandlerServiceServer(grpcServer, &server.ClerkStorageHandlerServer{Vfs: vfs})
 
 	uploaderService := service2.UploaderService{StorageHandlerHandlerServiceClient: clientStorageHandlerHandler, Logger: &logger, Vfs: vfs, ConfigObj: *conf}
+	ctx := context.Background()
 	cs := cache.New(60*time.Minute, 60*time.Minute)
 
 	// Create a new S3 SDK client instance.
@@ -285,7 +318,7 @@ func main() {
 		}
 		return storeIt, nil
 	}
-	customStore := store.NewRoutingStore(storeFunc, _zlogger)
+	customStore := store.NewRoutingStore(storeFunc, logger)
 	customStore.UseIn(composer)
 
 	handler, err := tusd.NewHandler(tusd.Config{
@@ -383,7 +416,7 @@ func main() {
 					}
 					continue
 				}
-				objectAndFiles, err := uploaderService.CreateObjectAndFiles(filename, object, collection, basePathString, severalObjects)
+				objectAndFiles, err := uploaderService.CreateObjectAndFiles(filename, object, collection, basePathString, severalObjects, connection, *conf, ErrorFactory)
 				if err != nil {
 					_, err = clientStorageHandlerHandler.AlterStatus(ctx, &pb.StatusObject{Id: statusId, Status: "error"})
 					if err != nil {

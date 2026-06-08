@@ -1,4 +1,4 @@
-FROM golang:1.26.4 as builder
+FROM golang:1.26.1 as builder
 
 WORKDIR /dlza-manager-storage-handler
 
