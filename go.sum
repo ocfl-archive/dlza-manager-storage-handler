@@ -190,8 +190,8 @@ github.com/ocfl-archive/dlza-manager-handler v1.0.3-beta7 h1:HSdc9gfle13xqUj4KY+
 github.com/ocfl-archive/dlza-manager-handler v1.0.3-beta7/go.mod h1:agMSGeQCqkEKplD/z3DiXLZZeB8I8+soBf61NboT1Es=
 github.com/ocfl-archive/error v1.0.5 h1:nPidx9HBSiViSDZHfVY8nIabBeOSO5vLFOcUMgt7yLo=
 github.com/ocfl-archive/error v1.0.5/go.mod h1:vOwIAdG34QlD9ExXUXu8QSywUKIIMN31ykQ2U0LvOMs=
-github.com/ocfl-archive/filesystem v1.0.9 h1:r9ZOOnHc+z+YfixrEzyr5gbhiF5d08MVWZP/DsDT8ow=
-github.com/ocfl-archive/filesystem v1.0.9/go.mod h1:5FW1ztj2K8WEGfY8hlyycoY5hU4CBt9m1B/NtfSPZXo=
+github.com/ocfl-archive/filesystem v1.0.10 h1:AXZhuN6eo2G084XT3/jncZ6ca/ILnTcTvhWoTIuwL44=
+github.com/ocfl-archive/filesystem v1.0.10/go.mod h1:5FW1ztj2K8WEGfY8hlyycoY5hU4CBt9m1B/NtfSPZXo=
 github.com/ocfl-archive/gocfl-extensions v0.0.0-20260528132837-973f8d8950e2 h1:n5ucEbtEyP9JBvo5VaEL/1vZ0zQoB1I0BWdCVSTn/MU=
 github.com/ocfl-archive/gocfl-extensions v0.0.0-20260528132837-973f8d8950e2/go.mod h1:z7He3BiYCQkdUFYdQlh64AE1NhSyo5tfWasrJlNzHPU=
 github.com/ocfl-archive/gocfl/v3 v3.0.7 h1:6zGo4fUGvld6ZLcT/26VuI0Do3QqFjYFJQ3bxkwCVSw=
