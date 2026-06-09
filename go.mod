@@ -17,7 +17,7 @@ require (
 	github.com/ocfl-archive/dlza-manager v1.0.3-beta3
 	github.com/ocfl-archive/dlza-manager-handler v1.0.3-beta7
 	github.com/ocfl-archive/error v1.0.5
-	github.com/ocfl-archive/filesystem v1.0.9
+	github.com/ocfl-archive/filesystem v1.0.10
 	github.com/ocfl-archive/gocfl-extensions v0.0.0-20260528132837-973f8d8950e2
 	github.com/ocfl-archive/gocfl/v3 v3.0.7
 	github.com/ocfl-archive/indexer/v3 v3.0.44
