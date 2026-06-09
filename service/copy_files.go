@@ -5,16 +5,16 @@ import (
 	"io"
 	"io/fs"
 
-	"github.com/je4/filesystem/v3/pkg/writefs"
-	"github.com/je4/utils/v2/pkg/zLogger"
 	pbHandler "github.com/ocfl-archive/dlza-manager-handler/handlerproto"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
+	"github.com/ocfl-archive/filesystem/pkg/writefs"
+	"github.com/ocfl-archive/gocfl/v3/pkg/ocfllogger"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	grpcstatus "google.golang.org/grpc/status"
 )
 
-func StoringFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServiceClient, ctx context.Context, objectWithCollectionAliasAndPathAndFiles *pb.IncomingOrder, partitionId string, severalObjects string, logger zLogger.ZLogger) (*pb.Status, error) {
+func StoringFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerServiceClient, ctx context.Context, objectWithCollectionAliasAndPathAndFiles *pb.IncomingOrder, partitionId string, severalObjects string) (*pb.Status, error) {
 
 	stream, err := clientStorageHandlerHandler.SaveAllTableObjectsAfterCopyingStream(ctx)
 	if err != nil {
@@ -54,7 +54,7 @@ func StoringFiles(clientStorageHandlerHandler pbHandler.StorageHandlerHandlerSer
 	return &pb.Status{Ok: true}, nil
 }
 
-func DeleteTemporaryFiles(filePaths []string, vfs fs.FS, logger zLogger.ZLogger) (*pb.Status, error) {
+func DeleteTemporaryFiles(filePaths []string, vfs fs.FS, logger ocfllogger.OCFLLogger) (*pb.Status, error) {
 	for _, filePath := range filePaths {
 		if err := writefs.Remove(vfs, filePath); err != nil {
 			logger.Error().Msgf("error deleting file to '%s': %v", filePath, err)

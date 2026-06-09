@@ -12,20 +12,20 @@ import (
 	"time"
 
 	"emperror.dev/errors"
-	"github.com/je4/filesystem/v3/pkg/s3fsrw"
-	"github.com/je4/filesystem/v3/pkg/writefs"
-	"github.com/je4/filesystem/v3/pkg/zipfs"
-	"github.com/je4/utils/v2/pkg/zLogger"
 	handlerPb "github.com/ocfl-archive/dlza-manager-handler/handlerproto"
 	"github.com/ocfl-archive/dlza-manager-storage-handler/config"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	"github.com/ocfl-archive/dlza-manager/mapper"
 	"github.com/ocfl-archive/dlza-manager/models"
-	archiveerror "github.com/ocfl-archive/error/pkg/error"
-	"github.com/ocfl-archive/gocfl/v2/gocfl/cmd"
-	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
+	"github.com/ocfl-archive/filesystem/pkg/vfsrw"
+	"github.com/ocfl-archive/filesystem/pkg/writefs"
+	"github.com/ocfl-archive/filesystem/pkg/zipfs"
+	"github.com/ocfl-archive/gocfl/v3/pkg/ocfl"
+	"github.com/ocfl-archive/gocfl/v3/pkg/ocfl/inventory"
+	"github.com/ocfl-archive/gocfl/v3/pkg/ocfl/ocflerrors"
+	"github.com/ocfl-archive/gocfl/v3/pkg/ocfl/util"
+	"github.com/ocfl-archive/gocfl/v3/pkg/ocfllogger"
 	"github.com/ocfl-archive/indexer/v3/pkg/indexer"
-	"golang.org/x/exp/maps"
 )
 
 const (
@@ -36,8 +36,8 @@ const (
 type UploaderService struct {
 	StorageHandlerHandlerServiceClient handlerPb.StorageHandlerHandlerServiceClient
 	ConfigObj                          config.Config
-	Logger                             *zLogger.ZLogger
-	Vfs                                fs.FS
+	Logger                             *ocfllogger.OCFLLogger
+	Vfs                                vfsrw.VFSRW
 }
 
 func (u *UploaderService) TenantHasAccess(key string, collection string) (bool, error) {
@@ -55,7 +55,7 @@ func (u *UploaderService) StoringFiles(order *pb.IncomingOrder, partitionId stri
 	c := context.Background()
 	ctx, cancel := context.WithTimeout(c, 10000*time.Second)
 	defer cancel()
-	_, err := StoringFiles(u.StorageHandlerHandlerServiceClient, ctx, order, partitionId, severalObjects, *u.Logger)
+	_, err := StoringFiles(u.StorageHandlerHandlerServiceClient, ctx, order, partitionId, severalObjects)
 	if err != nil {
 		return errors.Wrapf(err, "cannot copy file for collection '%s'", order.CollectionAlias)
 	}
@@ -75,13 +75,13 @@ func (u *UploaderService) StoringFiles(order *pb.IncomingOrder, partitionId stri
 	return nil
 }
 
-func (u *UploaderService) CreateObjectAndFiles(tusePath string, object models.Object, collectionAlias string, basePathString string, severalObjects string, connection models.Connection, confObj config.Config, errorFactory *archiveerror.Factory) (*pb.ObjectAndFiles, error) {
+func (u *UploaderService) CreateObjectAndFiles(tusePath string, object models.Object, collectionAlias string, basePathString string, severalObjects string) (*pb.ObjectAndFiles, error) {
 	var err error
 	var fileObjects []*pb.File
 	head := "v1"
 	versions := "{\"v1\" : {}}"
 	if !object.Binary {
-		fileObjects, head, versions, err = extractMetadata(tusePath, basePathString, connection, *u.Logger, errorFactory)
+		fileObjects, head, versions, err = extractMetadata(tusePath, basePathString, u.Vfs, *u.Logger)
 		if err != nil {
 			return nil, errors.Wrapf(err, "cannot ExtractMetadata for: %s", tusePath)
 		}
@@ -99,85 +99,72 @@ func (u *UploaderService) CreateObjectAndFiles(tusePath string, object models.Ob
 	return objectAndFiles, nil
 }
 
-func extractMetadata(tusFileName string, basePath string, connection models.Connection, logger zLogger.ZLogger, errorFactory *archiveerror.Factory) ([]*pb.File, string, string, error) {
-	fsFactory, err := writefs.NewFactory()
-	if err != nil {
-		return nil, "", "", errors.Wrap(err, "cannot create filesystem factory")
-	}
-	bucketName, _ := strings.CutPrefix(basePath, connection.Folder)
-	// arn:cache:s3:zurich:trallala
-	if err := fsFactory.Register(s3fsrw.NewCreateFSFunc(map[string]*s3fsrw.S3Access{
-		"cache": &s3fsrw.S3Access{
-			AccessKey: string(maps.Values(connection.VFS)[0].S3.AccessKeyID),
-			SecretKey: string(maps.Values(connection.VFS)[0].S3.SecretAccessKey),
-			URL:       string(maps.Values(connection.VFS)[0].S3.Endpoint),
-			UseSSL:    true,
-		},
-	}, s3fsrw.ARNRegexStr, false, nil, "", "", logger), "^arn:", writefs.LowFS); err != nil {
-		return nil, "", "", errors.Wrap(err, "cannot register zipfs")
-	}
-	if err := fsFactory.Register(zipfs.NewCreateFSFunc(logger), "([0-9a-f]{32}|\\.zip)$", writefs.HighFS); err != nil {
-		return nil, "", "", errors.Wrap(err, "cannot register zipfs")
-	}
-	/*
-		if err := fsFactory.Register(osfsrw.NewCreateFSFunc(), "", writefs.LowFS); err != nil {
-			return nil, errors.Wrap(err, "cannot register zipfs")
-		}
-	*/
+func extractMetadata(tusFileName string, basePath string, vfs vfsrw.VFSRW, logger ocfllogger.OCFLLogger) ([]*pb.File, string, string, error) {
 
-	ocflFS, err := fsFactory.Get("arn:cache:s3:::"+path.Join(bucketName, tusFileName), true)
+	ocflPath := path.Join(basePath, tusFileName)
+	destFS, err := zipfs.NewFSFile(vfs, ocflPath, logger.Logger())
 	if err != nil {
-		logger.Error().Msgf("cannot get filesystem for file '%s': %v", tusFileName, err)
-		logger.Debug().Msgf("%v%+v", err, ocfl.GetErrorStacktrace(err))
+		logger.Error().Err(err).Msgf("cannot open zip filesystem for '%s'", ocflPath)
 		return nil, "", "", err
 	}
 	defer func() {
-		if err := writefs.Close(ocflFS); err != nil {
-			logger.Error().Msgf("cannot close filesystem: %v", err)
-			logger.Error().Msgf("%v%+v", err, ocfl.GetErrorStacktrace(err))
+		if err := writefs.Close(destFS); err != nil {
+			logger.Error().Err(err).Msgf("cannot close filesystem for '%s'", ocflPath)
 		}
 	}()
+	var objFsys fs.FS
+	_, err = util.GetStorageRootVersion(destFS)
+	if err != nil && !errors.Is(err, ocflerrors.ErrVersionNone) {
+		logger.Error().Err(err).Msgf("cannot get storage root version for '%s'", ocflPath)
+		return nil, "", "", err
+	} else if err == nil {
 
-	extensionFactory, err := cmd.InitExtensionFactory(map[string]string{},
-		"",
-		false,
-		nil,
-		nil,
-		nil,
-		nil,
-		logger,
-		"")
-	if err != nil {
-		return nil, "", "", errors.Wrap(err, "cannot instantiate extension factory")
+		fis, err := fs.ReadDir(destFS, ".")
+		if err != nil {
+			logger.Error().Err(err).Msgf("cannot read directory for '%s'", ocflPath)
+			return nil, "", "", err
+		}
+		var objF string
+		for _, fi := range fis {
+			if fi.IsDir() && fi.Name() != "extensions" {
+				objF = fi.Name()
+				break
+			}
+		}
+		if objF == "" {
+			logger.Error().Msgf("cannot find OCFL object directory for '%s'", ocflPath)
+			return nil, "", "", err
+		}
+
+		objFsys, err = writefs.Sub(destFS, objF)
+		if err != nil {
+			logger.Error().Err(err).Msgf("cannot open filesystem for '%s'", ocflPath)
+			return nil, "", "", err
+		}
 	}
 
-	ctx := ocfl.NewContextValidation(context.TODO())
-	storageRoot, err := ocfl.LoadStorageRoot(ctx, ocflFS, extensionFactory, logger, errorFactory, "")
+	objLoaded, err := ocfl.LoadObject(context.Background(), objFsys, nil, logger)
 	if err != nil {
-		logger.Error().Msgf("cannot open storage root: %v", err)
-		logger.Debug().Msgf("%v%+v", err, ocfl.GetErrorStacktrace(err))
+		logger.Error().Msgf("failed to load object '%s' at '%s': %v", tusFileName, ocflPath, err)
 		return nil, "", "", err
 	}
-	metadata, err := storageRoot.ExtractMeta("", "")
+	defer objLoaded.Close()
+
+	extractor := objLoaded.GetExtractor()
+	defer func() { _ = extractor.Close() }()
+	metadata, err := extractor.GetMetadata()
 	if err != nil {
-		fmt.Printf("cannot extract metadata from storage root: %v\n", err)
-		logger.Error().Msgf("cannot extract metadata from storage root: %v\n", err)
-		logger.Debug().Msgf("%v%+v", err, ocfl.GetErrorStacktrace(err))
+		logger.Error().Msgf("failed to get metadata for object '%s': %v", ocflPath, err)
 		return nil, "", "", err
 	}
 
-	object := &ocfl.ObjectMetadata{}
-	for _, mapItem := range metadata.Objects {
-		object = mapItem
-	}
-	filesRetrieved := object.Files
-	head := object.Head
-	versionsMap := object.Versions
+	filesRetrieved := metadata.Files
+	head := metadata.Head.String()
+	versionsMap := metadata.Versions
 	versionsJson, err := json.Marshal(versionsMap)
 	if err != nil {
 		fmt.Printf("cannot marshal versions to Json from storage root: %v\n", err)
 		logger.Error().Msgf("cannot marshal versions to Json from storage root: %v\n", err)
-		logger.Debug().Msgf("%v%+v", err, ocfl.GetErrorStacktrace(err))
 		return nil, "", "", err
 	}
 
@@ -218,8 +205,8 @@ func extractMetadata(tusFileName string, basePath string, connection models.Conn
 	return files, head, string(versionsJson), nil
 }
 
-func GetFilesFromGocflObject(tusFileName string, basePathString string, vfs fs.FS, logger zLogger.ZLogger) ([]*pb.File, error) {
-	objectOcfl := &ocfl.ObjectMetadata{}
+func GetFilesFromGocflObject(tusFileName string, basePathString string, vfs fs.FS, logger ocfllogger.OCFLLogger) ([]*pb.File, error) {
+	var objectOcfl inventory.Metadata
 	pathTus := path.Join(basePathString, strings.TrimSuffix(tusFileName, filepath.Ext(tusFileName))+".json")
 	sourceFP, err := vfs.Open(pathTus)
 	if err != nil {
@@ -244,7 +231,7 @@ func GetFilesFromGocflObject(tusFileName string, basePathString string, vfs fs.F
 		return nil, errors.New(fmt.Sprintf("Error mapping json: %s", pathTus))
 	}
 	filesRetrieved := objectOcfl.Files
-	head := objectOcfl.Head
+	head := objectOcfl.Head.String()
 
 	files := make([]*pb.File, 0)
 	for _, fileRetr := range filesRetrieved {
