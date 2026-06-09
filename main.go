@@ -154,7 +154,7 @@ func main() {
 		With().
 		Timestamp().
 		Logger().
-		Level(zerolog.ErrorLevel)
+		Level(zerolog.DebugLevel)
 	var _zlogger zLogger.ZLogger = &zlogger
 	logger := ocfl.NewOCFLLogger(ctx, &zlogger, nil, version.Version1_1, nil)
 
