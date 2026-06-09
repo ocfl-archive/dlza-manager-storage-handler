@@ -149,9 +149,12 @@ func main() {
 	}
 	configErrorFactory()
 	ctx := context.Background()
-	out := zerolog.ConsoleWriter{Out: os.Stderr}
-	zlogger := zerolog.New(out) //.
-	//Level(zerolog.ErrorLevel)
+	out := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano}
+	zlogger := zerolog.New(out).
+		With().
+		Timestamp().
+		Logger().
+		Level(zerolog.DebugLevel)
 	var _zlogger zLogger.ZLogger = &zlogger
 	logger := ocfl.NewOCFLLogger(ctx, &zlogger, nil, version.Version1_1, nil)
 
